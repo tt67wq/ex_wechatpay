@@ -16,7 +16,7 @@ defmodule ExWechatpay do
     client: [
       type: :any,
       required: true,
-      doc: "client instance"
+      doc: "client instance of `ExWechatpay.Client`"
     ]
   ]
 
@@ -24,14 +24,12 @@ defmodule ExWechatpay do
           name: atom(),
           client: Client.t()
         }
-  @type json_t :: %{bitstring() => any()}
+  @type string_dict :: %{bitstring() => any()}
   @type ok_t(ret) :: {:ok, ret}
   @type err_t() :: {:error, ExWechatpay.Error.t()}
   @type options_t :: keyword(unquote(NimbleOptions.option_typespec(@wechat_payment_options)))
 
-  @enforce_keys ~w(name client)a
-
-  defstruct @enforce_keys
+  defstruct [:name, :client]
 
   @doc """
   create a new instance of this WechatPayment module
@@ -85,7 +83,7 @@ defmodule ExWechatpay do
         }
       } = get_certificates(wechat)
   """
-  @spec get_certificates(t()) :: ok_t(json_t()) | err_t()
+  @spec get_certificates(t()) :: ok_t(string_dict()) | err_t()
   def get_certificates(wechat, verify \\ true) do
     with {:ok, %{"data" => data}} <-
            Client.request(wechat.client, :get, "/v3/certificates", nil, nil, [], verify?: verify) do
@@ -113,6 +111,7 @@ defmodule ExWechatpay do
   end
 
   @doc """
+  Native下单API
   https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_4_1.shtml
 
   ## Examples
@@ -129,7 +128,7 @@ defmodule ExWechatpay do
         })
 
   """
-  @spec create_native_transaction(t(), json_t()) :: ok_t(json_t()) | err_t()
+  @spec create_native_transaction(t(), string_dict()) :: ok_t(string_dict()) | err_t()
   def create_native_transaction(wechat, body) do
     body =
       body
@@ -141,6 +140,7 @@ defmodule ExWechatpay do
   end
 
   @doc """
+  JSAPI下单
   https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_1_1.shtml
 
   ## Examples
@@ -158,7 +158,7 @@ defmodule ExWechatpay do
         }
       })
   """
-  @spec create_jsapi_transaction(t(), json_t()) :: ok_t(json_t()) | err_t()
+  @spec create_jsapi_transaction(t(), string_dict()) :: ok_t(string_dict()) | err_t()
   def create_jsapi_transaction(wechat, body) do
     body =
       body
@@ -170,6 +170,7 @@ defmodule ExWechatpay do
   end
 
   @doc """
+  H5下单API
   https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_3_1.shtml
 
   ## Examples
@@ -187,7 +188,7 @@ defmodule ExWechatpay do
         }
       })
   """
-  @spec create_h5_transaction(t(), json_t()) :: ok_t(json_t()) | err_t()
+  @spec create_h5_transaction(t(), string_dict()) :: ok_t(string_dict()) | err_t()
   def create_h5_transaction(wechat, body) do
     body =
       body
@@ -199,6 +200,7 @@ defmodule ExWechatpay do
   end
 
   @doc """
+  查询订单API
   https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_4_2.shtml
 
   ## Examples
@@ -226,7 +228,7 @@ defmodule ExWechatpay do
        }} = ExWechatpay.Wechat.Client.Finch.query_transaction(wechat, :out_trade_no, "1217752501201407033233368018")
   """
   @spec query_transaction(t(), :out_trade_no | :transaction_id, String.t()) ::
-          ok_t(json_t()) | err_t()
+          ok_t(string_dict()) | err_t()
   def query_transaction(wechat, :out_trade_no, out_trade_no) do
     Client.request(
       wechat.client,
@@ -248,6 +250,7 @@ defmodule ExWechatpay do
   end
 
   @doc """
+  关闭订单API
   https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_4_3.shtml
 
   ## Examples
@@ -270,6 +273,7 @@ defmodule ExWechatpay do
   end
 
   @doc """
+  生成小程序支付表单
   create a miniapp payform with a jsapi transaction_id
 
   ## Examples
@@ -283,12 +287,13 @@ defmodule ExWechatpay do
         "timeStamp" => 1685676354
       }} = ExWechatpay.Wechat.Client.Finch.miniapp_payform(wechat, "testO_1234567890")
   """
-  @spec miniapp_payform(t(), String.t()) :: ok_t(json_t())
+  @spec miniapp_payform(t(), String.t()) :: ok_t(string_dict())
   def miniapp_payform(wechat, prepay_id) do
     {:ok, Client.miniapp_payform(wechat.client, prepay_id)}
   end
 
   @doc """
+  申请退款API
   https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_3_9.shtml
 
   ## Examples
@@ -323,7 +328,7 @@ defmodule ExWechatpay do
     })
 
   """
-  @spec create_refund(t(), json_t()) :: ok_t(json_t()) | err_t()
+  @spec create_refund(t(), string_dict()) :: ok_t(string_dict()) | err_t()
   def create_refund(wechat, body) do
     body =
       body
