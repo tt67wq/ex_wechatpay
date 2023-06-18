@@ -2,6 +2,8 @@
 # 微信支付/WechatPay SDK in Elixir
 该SDK提供了一种简单的方式来与微信支付API进行交互。它包括了部分微信支付API，包括付款、退款、查询订单等。
 
+[Online Document](https://hexdocs.pm/ex_wechatpay/0.1.0)
+
 ## 安装
 ---
 将SDK添加到你的mix.exs文件中：
