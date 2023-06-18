@@ -9,8 +9,7 @@
 ```Elixir
 def deps do
   [
-    # It's fake, not published to Hex.pm yet
-    {:wechat_pay, "~> 1.0"}
+    {:wechat_pay, "~> 0.1.0"}
   ]
 end
 ```
