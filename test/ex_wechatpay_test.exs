@@ -3,7 +3,7 @@ defmodule ExWechatpayTest do
 
   alias ExWechatpay.Util
 
-  setup do
+  setup_all do
     test_data = File.read!("tmp/test.json") |> Jason.decode!()
     # {
     #     "appid": "wxefd6b2150cac",
@@ -38,7 +38,7 @@ defmodule ExWechatpayTest do
 
     wechat = ExWechatpay.new(client: client)
     start_supervised!({ExWechatpay, wechat: wechat})
-    {:ok, wechat: wechat}
+    [wechat: wechat]
   end
 
   test "get_certificates", %{wechat: wechat} do
@@ -79,8 +79,7 @@ defmodule ExWechatpayTest do
   end
 
   test "query_transaction_by_out_trade_no", %{wechat: wechat} do
-    assert {:ok, _} =
-             ExWechatpay.query_transaction(wechat, :out_trade_no, "testO_1234567890")
+    assert {:ok, _} = ExWechatpay.query_transaction(wechat, :out_trade_no, "testO_1234567890")
   end
 
   test "query_transaction_by_transaction_id", %{wechat: wechat} do
