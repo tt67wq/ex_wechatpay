@@ -3,7 +3,7 @@ defmodule ExWechatpay.Client do
   微信支付客户端behaviour
   """
 
-  alias ExWechatpay.{Error, Http, Util}
+  alias ExWechatpay.{Error, Http, Util, Request}
 
   require Logger
 
@@ -25,8 +25,8 @@ defmodule ExWechatpay.Client do
     ],
     service_host: [
       type: :string,
-      default: "https://api.mch.weixin.qq.com",
-      doc: "微信支付服务地址"
+      default: "api.mch.weixin.qq.com",
+      doc: "微信支付服务域名"
     ],
     notify_url: [
       type: :string,
@@ -63,20 +63,10 @@ defmodule ExWechatpay.Client do
       doc:
         "商户API证书, see https://pay.weixin.qq.com/wiki/doc/apiv3/wechatpay/wechatpay7_0.shtml for more details"
     ],
-    http_module: [
-      type: :atom,
-      default: ExWechatpay.Wechat.Http.Finch,
-      doc: "http client module"
-    ],
     http_client: [
       type: :any,
       doc: "http client instance, default: ExWechatpay.Wechat.Http.Finch.new()",
       required: true
-    ],
-    json_module: [
-      type: :atom,
-      default: Jason,
-      doc: "json serializer/unserializer module"
     ]
   ]
   @tag_length 16
@@ -94,16 +84,14 @@ defmodule ExWechatpay.Client do
   defstruct name: __MODULE__,
             appid: "",
             mchid: "",
-            service_host: "https://api.mch.weixin.qq.com",
+            service_host: "api.mch.weixin.qq.com",
             notify_url: "",
             apiv3_key: "",
             wx_pubs: [{"wechatpay-serial", nil}],
             client_serial_no: "",
             client_key: nil,
             client_cert: nil,
-            http_module: ExWechatpay.Http.Finch,
-            http_client: ExWechatpay.Http.Finch.new(),
-            json_module: Jason
+            http_client: ExWechatpay.Http.Default.new()
 
   @doc """
   create a new client instance
@@ -134,47 +122,28 @@ defmodule ExWechatpay.Client do
   @spec start_link(opts()) :: GenServer.on_start()
   def start_link(opts) do
     {client, _opts} = Keyword.pop!(opts, :client)
-    client.http_module.start_link(http: client.http_client)
+    Http.start_link(client.http_client)
   end
 
-  @spec request(t(), method(), api(), body(), params(), headers(), opts()) ::
-          {:ok, %{String.t() => term()}} | {:error, Error.t()}
-  def request(client, method, api, body, params, headers \\ [], opts \\ [])
-
-  def request(client, method, api, body, params, headers, opts) do
-    with ts <- Util.timestamp(),
-         nonce_str <- Util.random_string(12),
-         url <- api_url(client, api),
-         signature <- sign(client, method, url, body, params, nonce_str, ts),
-         auth <-
-           "mchid=\"#{client.mchid}\",nonce_str=\"#{nonce_str}\",timestamp=\"#{ts}\",serial_no=\"#{client.client_serial_no}\",signature=\"#{signature}\"",
+  @spec request(t(), Request.t(), opts()) :: {:ok, Http.Response.t()} | {:error, Error.t()}
+  def request(client, req, opts \\ []) do
+    with auth <- Request.authorization(client, req),
          headers <- [
            {"Content-Type", "application/json"},
            {"Accept", "application/json"},
-           {"Authorization", "WECHATPAY2-SHA256-RSA2048 " <> auth}
-           | headers
+           {"Authorization", auth}
          ],
-         body <- body_encode(client, body),
-         verify? <- Keyword.get(opts, :verify, true) do
-      Http.do_request(client.http_client, method, url, headers, body, params, opts)
-      |> case do
-        {204, _headers, _body} ->
-          {:ok, %{}}
-
-        {200, headers, body} ->
-          if verify? do
-            if verify(client, headers, body) do
-              {:ok, client.json_module.decode!(body)}
-            else
-              {:error, Error.new("verify failed")}
-            end
-          else
-            {:ok, client.json_module.decode!(body)}
-          end
-
-        {code, _headers, body} ->
-          {:error, Error.new("request failed: #{code} #{inspect(body)}")}
-      end
+         http_req <-
+           Http.Request.new(
+             host: client.service_host,
+             method: req.method,
+             path: req.api,
+             headers: headers,
+             body: req.body,
+             params: req.params,
+             opts: opts
+           ) do
+      Http.do_request(client.http_client, http_req)
     end
   end
 
@@ -258,39 +227,6 @@ defmodule ExWechatpay.Client do
         false
       )
     end
-  end
-
-  defp body_encode(_, nil), do: ""
-  defp body_encode(client, body), do: client.json_module.encode!(body)
-
-  defp api_url(client, api) do
-    client.service_host
-    |> URI.merge(api)
-    |> to_string()
-  end
-
-  defp sign(client, method, url, body, params, nonce_str, timestamp) do
-    {http_method, body} =
-      case method do
-        :post -> {"POST", client.json_module.encode!(body)}
-        :get -> {"GET", ""}
-      end
-
-    url_without_host = String.slice(url, String.length(client.service_host), String.length(url))
-
-    url_without_host =
-      url_without_host <>
-        if params in [%{}, nil] do
-          ""
-        else
-          "?" <> URI.encode_query(params)
-        end
-
-    string_to_sign = "#{http_method}\n#{url_without_host}\n#{timestamp}\n#{nonce_str}\n#{body}\n"
-
-    string_to_sign
-    |> :public_key.sign(:sha256, client.client_key)
-    |> Base.encode64()
   end
 
   defp sign_miniapp(client, ts, nonce, package) do

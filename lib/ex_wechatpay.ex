@@ -5,7 +5,7 @@ defmodule ExWechatpay do
              |> String.split("<!-- MDOC !-->")
              |> Enum.fetch!(1)
 
-  alias ExWechatpay.Client
+  alias ExWechatpay.{Client, Request, Error}
 
   @wechat_payment_options [
     name: [
@@ -17,19 +17,25 @@ defmodule ExWechatpay do
       type: :any,
       required: true,
       doc: "client instance of `ExWechatpay.Client`"
+    ],
+    json_module: [
+      type: :atom,
+      default: Jason,
+      doc: "json module"
     ]
   ]
 
   @type t :: %__MODULE__{
           name: atom(),
-          client: Client.t()
+          client: Client.t(),
+          json_module: atom()
         }
   @type string_dict :: %{bitstring() => any()}
   @type ok_t(ret) :: {:ok, ret}
-  @type err_t() :: {:error, ExWechatpay.Error.t()}
+  @type err_t() :: {:error, Error.t()}
   @type options_t :: keyword(unquote(NimbleOptions.option_typespec(@wechat_payment_options)))
 
-  defstruct [:name, :client]
+  defstruct [:name, :client, :json_module]
 
   @doc """
   create a new instance of this WechatPayment module
@@ -85,15 +91,31 @@ defmodule ExWechatpay do
   """
   @spec get_certificates(t()) :: ok_t(string_dict()) | err_t()
   def get_certificates(wechat, verify \\ true) do
-    with {:ok, %{"data" => data}} <-
-           Client.request(wechat.client, :get, "/v3/certificates", nil, nil, [], verify?: verify) do
-      data =
-        data
-        |> Enum.map(fn %{"encrypt_certificate" => encrypt_certificate} = x ->
-          Map.put(x, "certificate", Client.decrypt(wechat.client, encrypt_certificate))
-        end)
+    with req <-
+           Request.new(
+             method: :get,
+             api: "/v3/certificates"
+           ),
+         {:ok, %{body: body, headers: headers}} <-
+           Client.request(wechat.client, req) do
+      if verify do
+        verify(wechat, headers, body)
+        |> if do
+          {:ok, %{"data" => data}} =
+            body
+            |> wechat.json_module.decode()
 
-      {:ok, %{"data" => data}}
+          data =
+            data
+            |> Enum.map(fn %{"encrypt_certificate" => encrypt_certificate} = x ->
+              Map.put(x, "certificate", Client.decrypt(wechat.client, encrypt_certificate))
+            end)
+
+          {:ok, %{"data" => data}}
+        else
+          {:error, Error.new(:verify_failed)}
+        end
+      end
     end
   end
 
@@ -129,14 +151,14 @@ defmodule ExWechatpay do
 
   """
   @spec create_native_transaction(t(), string_dict()) :: ok_t(string_dict()) | err_t()
-  def create_native_transaction(wechat, body) do
-    body =
-      body
-      |> Map.put_new("appid", wechat.client.appid)
-      |> Map.put_new("mchid", wechat.client.mchid)
-      |> Map.put_new("notify_url", wechat.client.notify_url)
+  def create_native_transaction(wechat, args) do
+    {:ok, body} = extend_args(wechat, args)
 
-    Client.request(wechat.client, :post, "/v3/pay/transactions/native", body, nil)
+    normal_request(wechat,
+      method: :post,
+      api: "/v3/pay/transactions/native",
+      body: body
+    )
   end
 
   @doc """
@@ -159,14 +181,14 @@ defmodule ExWechatpay do
       })
   """
   @spec create_jsapi_transaction(t(), string_dict()) :: ok_t(string_dict()) | err_t()
-  def create_jsapi_transaction(wechat, body) do
-    body =
-      body
-      |> Map.put_new("appid", wechat.client.appid)
-      |> Map.put_new("mchid", wechat.client.mchid)
-      |> Map.put_new("notify_url", wechat.client.notify_url)
+  def create_jsapi_transaction(wechat, args) do
+    {:ok, body} = extend_args(wechat, args)
 
-    Client.request(wechat.client, :post, "/v3/pay/transactions/jsapi", body, nil)
+    normal_request(wechat,
+      method: :post,
+      api: "/v3/pay/transactions/jsapi",
+      body: body
+    )
   end
 
   @doc """
@@ -189,14 +211,14 @@ defmodule ExWechatpay do
       })
   """
   @spec create_h5_transaction(t(), string_dict()) :: ok_t(string_dict()) | err_t()
-  def create_h5_transaction(wechat, body) do
-    body =
-      body
-      |> Map.put_new("appid", wechat.client.appid)
-      |> Map.put_new("mchid", wechat.client.mchid)
-      |> Map.put_new("notify_url", wechat.client.notify_url)
+  def create_h5_transaction(wechat, args) do
+    {:ok, body} = extend_args(wechat, args)
 
-    Client.request(wechat.client, :post, "/v3/pay/transactions/h5", body, nil)
+    normal_request(wechat,
+      method: :post,
+      api: "/v3/pay/transactions/h5",
+      body: body
+    )
   end
 
   @doc """
@@ -230,22 +252,18 @@ defmodule ExWechatpay do
   @spec query_transaction(t(), :out_trade_no | :transaction_id, String.t()) ::
           ok_t(string_dict()) | err_t()
   def query_transaction(wechat, :out_trade_no, out_trade_no) do
-    Client.request(
-      wechat.client,
-      :get,
-      "/v3/pay/transactions/out-trade-no/#{out_trade_no}",
-      nil,
-      %{"mchid" => wechat.client.mchid}
+    normal_request(wechat,
+      method: :get,
+      api: "/v3/pay/transactions/out-trade-no/#{out_trade_no}",
+      params: %{"mchid" => wechat.client.mchid}
     )
   end
 
   def query_transaction(wechat, :transaction_id, transaction_id) do
-    Client.request(
-      wechat.client,
-      :get,
-      "/v3/pay/transactions/id/#{transaction_id}",
-      nil,
-      %{"mchid" => wechat.client.mchid}
+    normal_request(wechat,
+      method: :get,
+      api: "/v3/pay/transactions/id/#{transaction_id}",
+      params: %{"mchid" => wechat.client.mchid}
     )
   end
 
@@ -259,12 +277,15 @@ defmodule ExWechatpay do
   """
   @spec close_transaction(t(), String.t()) :: :ok | err_t()
   def close_transaction(wechat, out_trade_no) do
-    Client.request(
-      wechat.client,
-      :post,
-      "/v3/pay/transactions/out-trade-no/#{out_trade_no}/close",
-      %{"mchid" => wechat.client.mchid},
-      nil
+    {:ok, body} =
+      %{"mchid" => wechat.client.mchid}
+      |> wechat.json_module.encode()
+
+    normal_request(
+      wechat,
+      method: :post,
+      api: "/v3/pay/transactions/out-trade-no/#{out_trade_no}/close",
+      body: body
     )
     |> case do
       {:ok, _} -> :ok
@@ -330,10 +351,50 @@ defmodule ExWechatpay do
   """
   @spec create_refund(t(), string_dict()) :: ok_t(string_dict()) | err_t()
   def create_refund(wechat, body) do
-    body =
+    {:ok, body} =
       body
       |> Map.put_new("notify_url", wechat.client.notify_url)
+      |> wechat.json_module.encode()
 
-    Client.request(wechat.client, :post, "/v3/refund/domestic/refunds", body, nil)
+    normal_request(wechat,
+      method: :post,
+      api: "/v3/refund/domestic/refunds",
+      body: body
+    )
   end
+
+  @spec verify_resp(t(), ExWechatpay.Http.Response.t()) ::
+          ok_t(string_dict()) | err_t()
+  defp verify_resp(wechat, %{headers: headers, body: body}) do
+    verify(wechat, headers, body)
+    |> if do
+      decode_body(wechat, body)
+    else
+      {:error, Error.new(:verify_failed)}
+    end
+  end
+
+  @spec extend_args(t(), string_dict()) :: {:ok, string_dict()}
+  defp extend_args(wechat, args) do
+    args
+    |> Map.put_new("appid", wechat.client.appid)
+    |> Map.put_new("mchid", wechat.client.mchid)
+    |> Map.put_new("notify_url", wechat.client.notify_url)
+    |> wechat.json_module.encode()
+  end
+
+  @spec normal_request(t(), keyword()) :: ok_t(string_dict()) | err_t()
+  defp normal_request(wechat, opts) do
+    opts
+    |> Request.new()
+    |> then(&Client.request(wechat.client, &1))
+    |> case do
+      {:ok, resp} -> verify_resp(wechat, resp)
+      error -> error
+    end
+  end
+
+  defp decode_body(_, ""), do: {:ok, ""}
+  defp decode_body(_, nil), do: {:ok, ""}
+  defp decode_body(wechat, body), do: wechat.json_module.decode(body)
 end

@@ -1,58 +1,201 @@
 defmodule ExWechatpay.Http do
   @moduledoc """
-  微信支付 HTTP 请求 behavior, default http client is Finch
-  you can implement your own http client via this behavior
+  behavior os http transport
   """
+  alias ExWechatpay.{Error}
 
   @type t :: struct()
-
   @type opts :: keyword()
-  @type method :: Finch.Request.method()
-  @type body :: iodata() | nil
-  @type params :: %{String.t() => any()} | nil
-  @type headers :: [{String.t(), String.t()}]
-  @type http_status :: non_neg_integer()
 
   @callback new(opts()) :: t()
   @callback start_link(http: t()) :: GenServer.on_start()
   @callback do_request(
               http :: t(),
-              method :: method(),
-              path :: bitstring(),
-              headers :: headers(),
-              body :: body(),
-              params :: params(),
-              opts :: opts()
-            ) :: {http_status(), headers(), iodata()}
+              req :: ExWechatpay.Http.Request.t()
+            ) ::
+              {:ok, ExWechatpay.Http.Response.t()} | {:error, Error.t()}
 
-  @spec do_request(
-          t(),
-          method(),
-          bitstring(),
-          headers(),
-          body(),
-          params(),
-          opts()
-        ) :: {http_status(), headers(), iodata()}
-  def do_request(http, method, path, headers, body, params, opts) do
-    delegate(http, :do_request, [method, path, headers, body, params, opts])
+  defp delegate(%module{} = http, func, args),
+    do: apply(module, func, [http | args])
+
+  def do_request(http, req), do: delegate(http, :do_request, [req])
+
+  def start_link(%module{} = http) do
+    apply(module, :start_link, [[http: http]])
   end
-
-  defp delegate(%module{} = client, func, args),
-    do: apply(module, func, [client | args])
 end
 
-defmodule ExWechatpay.Http.Finch do
+defmodule ExWechatpay.Http.Request do
   @moduledoc """
-  微信支付 HTTP 请求实现 via Finch
+  http request
   """
+  require Logger
+
+  @http_request_schema [
+    scheme: [
+      type: :string,
+      doc: "http scheme",
+      default: "https"
+    ],
+    host: [
+      type: :string,
+      doc: "http host",
+      required: true
+    ],
+    port: [
+      type: :integer,
+      doc: "http port",
+      default: 443
+    ],
+    method: [
+      type: :any,
+      doc: "http method",
+      default: :get
+    ],
+    path: [
+      type: :string,
+      doc: "http path",
+      default: "/"
+    ],
+    headers: [
+      type: {:list, :any},
+      doc: "http headers",
+      default: []
+    ],
+    body: [
+      type: :any,
+      doc: "http body",
+      default: nil
+    ],
+    params: [
+      type: {:map, :string, :string},
+      doc: "http query params",
+      default: %{}
+    ],
+    opts: [
+      type: :keyword_list,
+      doc: "http opts",
+      default: []
+    ]
+  ]
+
+  @type opts :: keyword()
+  @type method :: Finch.Request.method()
+  @type headers :: [{String.t(), String.t()}]
+  @type body :: iodata() | nil
+  @type params :: %{String.t() => binary()} | nil
+  @type http_request_schema_t :: [unquote(NimbleOptions.option_typespec(@http_request_schema))]
+
+  @type t :: %__MODULE__{
+          scheme: String.t(),
+          host: String.t(),
+          port: non_neg_integer(),
+          method: method(),
+          path: bitstring(),
+          headers: headers(),
+          body: body(),
+          params: params(),
+          opts: opts()
+        }
+
+  defstruct [
+    :scheme,
+    :host,
+    :port,
+    :method,
+    :path,
+    :headers,
+    :body,
+    :params,
+    :opts
+  ]
+
+  @doc """
+  create new http request instance
+
+  ## Params
+  #{NimbleOptions.docs(@http_request_schema)}
+  """
+  @spec new(http_request_schema_t()) :: t()
+  def new(opts) do
+    opts = opts |> NimbleOptions.validate!(@http_request_schema)
+    struct(__MODULE__, opts)
+  end
+
+  @spec url(t()) :: URI.t()
+  def url(req) do
+    query =
+      if req.params in [nil, %{}] do
+        nil
+      else
+        req.params |> URI.encode_query()
+      end
+
+    %URI{
+      scheme: req.scheme,
+      host: req.host,
+      path: req.path,
+      query: query,
+      port: req.port
+    }
+  end
+end
+
+defmodule ExWechatpay.Http.Response do
+  @moduledoc """
+  http response
+  """
+  @http_response_schema [
+    status_code: [
+      type: :integer,
+      doc: "http status code",
+      default: 200
+    ],
+    headers: [
+      type: {:list, :any},
+      doc: "http headers",
+      default: []
+    ],
+    body: [
+      type: :string,
+      doc: "http body",
+      default: ""
+    ]
+  ]
+
+  @type t :: %__MODULE__{
+          status_code: non_neg_integer(),
+          headers: [{String.t(), String.t()}],
+          body: iodata() | nil
+        }
+
+  @type http_response_schema_t :: [unquote(NimbleOptions.option_typespec(@http_response_schema))]
+
+  defstruct [:status_code, :headers, :body]
+
+  @spec new(http_response_schema_t()) :: t()
+  def new(opts) do
+    opts = opts |> NimbleOptions.validate!(@http_response_schema)
+    struct(__MODULE__, opts)
+  end
+end
+
+defmodule ExWechatpay.Http.Default do
+  @moduledoc """
+  Implement ExWechatpay.Http behavior with Finch
+  """
+
+  require Logger
   alias ExWechatpay.{Http, Error}
 
   @behaviour Http
 
-  require Logger
+  # types
+  @type t :: %__MODULE__{
+          name: GenServer.name()
+        }
 
-  defstruct [:name]
+  defstruct name: __MODULE__
 
   @impl Http
   def new(opts \\ []) do
@@ -61,43 +204,45 @@ defmodule ExWechatpay.Http.Finch do
   end
 
   @impl Http
-  def do_request(client, method, path, headers, body, params, opts) do
-    Logger.debug(%{
-      "method" => method,
-      "path" => path,
-      "headers" => headers,
-      "body" => body,
-      "params" => params,
-      "opts" => opts
-    })
-
-    with opts <- Keyword.put_new(opts, :receive_timeout, 2000),
-         req <-
+  def do_request(http, req) do
+    with opts <- opts(req.opts),
+         finch_req <-
            Finch.build(
-             method,
-             url(path, params),
-             headers,
-             body,
+             req.method,
+             Http.Request.url(req),
+             req.headers,
+             req.body,
              opts
            ) do
-      Finch.request(req, client.name)
-      |> case do
-        {:ok, %Finch.Response{status: 204}} ->
-          {204, [], nil}
+      # Logger.debug(%{
+      #   "method" => req.method,
+      #   "url" => Http.Request.url(req) |> URI.to_string(),
+      #   "params" => req.params,
+      #   "headers" => req.headers,
+      #   "body" => req.body,
+      #   "opts" => opts,
+      #   "req" => finch_req
+      # })
 
-        {:ok, %Finch.Response{status: status, body: body, headers: resp_headers}} ->
-          {status, resp_headers, body}
+      finch_req
+      |> Finch.request(http.name)
+      |> case do
+        {:ok, %Finch.Response{status: status, body: body, headers: headers}}
+        when status in 200..299 ->
+          {:ok, Http.Response.new(status_code: status, body: body, headers: headers)}
+
+        {:ok, %Finch.Response{status: status, body: body}} ->
+          {:error, Error.new("status: #{status}, body: #{body}")}
 
         {:error, exception} ->
-          Logger.error(%{"path" => path, "error" => exception})
-          raise Error.new(inspect(exception))
+          raise exception
+          {:error, Error.new(inspect(exception))}
       end
     end
   end
 
-  defp url(path, nil), do: path
-  defp url(path, params) when params == %{}, do: path
-  defp url(path, params), do: path <> "?" <> URI.encode_query(params)
+  defp opts(nil), do: [receive_timeout: 5000]
+  defp opts(options), do: Keyword.put_new(options, :receive_timeout, 5000)
 
   def child_spec(opts) do
     http = Keyword.fetch!(opts, :http)
@@ -106,10 +251,7 @@ defmodule ExWechatpay.Http.Finch do
 
   @impl Http
   def start_link(opts) do
-    {http, opts} = Keyword.pop!(opts, :http)
-
-    opts
-    |> Keyword.put(:name, http.name)
-    |> Finch.start_link()
+    {http, _opts} = Keyword.pop!(opts, :http)
+    Finch.start_link(name: http.name)
   end
 end
