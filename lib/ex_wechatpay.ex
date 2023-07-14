@@ -5,7 +5,7 @@ defmodule ExWechatpay do
              |> String.split("<!-- MDOC !-->")
              |> Enum.fetch!(1)
 
-  alias ExWechatpay.{Client, Request, Error}
+  alias ExWechatpay.{Client, Request, Error, Typespecs}
 
   @wechat_payment_options [
     name: [
@@ -30,7 +30,6 @@ defmodule ExWechatpay do
           client: Client.t(),
           json_module: atom()
         }
-  @type string_dict :: %{bitstring() => any()}
   @type ok_t(ret) :: {:ok, ret}
   @type err_t() :: {:error, Error.t()}
   @type options_t :: keyword(unquote(NimbleOptions.option_typespec(@wechat_payment_options)))
@@ -89,7 +88,7 @@ defmodule ExWechatpay do
         }
       } = get_certificates(wechat)
   """
-  @spec get_certificates(t()) :: ok_t(string_dict()) | err_t()
+  @spec get_certificates(t()) :: ok_t(Typespecs.string_dict()) | err_t()
   def get_certificates(wechat, verify \\ true) do
     with req <-
            Request.new(
@@ -127,7 +126,7 @@ defmodule ExWechatpay do
 
       true = verify(wechat, [{"Wechatpay-Serial" => "35CE31ED8F4A50B930FF8D37C51B5ADA03265E72"}], "body")
   """
-  @spec verify(t(), Client.headers(), binary()) :: boolean()
+  @spec verify(t(), Typespecs.headers(), Typespecs.body()) :: boolean()
   def verify(wechat, headers, body) do
     Client.verify(wechat.client, headers, body)
   end
@@ -150,7 +149,8 @@ defmodule ExWechatpay do
         })
 
   """
-  @spec create_native_transaction(t(), string_dict()) :: ok_t(string_dict()) | err_t()
+  @spec create_native_transaction(t(), Typespecs.string_dict()) ::
+          ok_t(Typespecs.string_dict()) | err_t()
   def create_native_transaction(wechat, args) do
     {:ok, body} = extend_args(wechat, args)
 
@@ -180,7 +180,8 @@ defmodule ExWechatpay do
         }
       })
   """
-  @spec create_jsapi_transaction(t(), string_dict()) :: ok_t(string_dict()) | err_t()
+  @spec create_jsapi_transaction(t(), Typespecs.string_dict()) ::
+          ok_t(Typespecs.string_dict()) | err_t()
   def create_jsapi_transaction(wechat, args) do
     {:ok, body} = extend_args(wechat, args)
 
@@ -210,7 +211,8 @@ defmodule ExWechatpay do
         }
       })
   """
-  @spec create_h5_transaction(t(), string_dict()) :: ok_t(string_dict()) | err_t()
+  @spec create_h5_transaction(t(), Typespecs.string_dict()) ::
+          ok_t(Typespecs.string_dict()) | err_t()
   def create_h5_transaction(wechat, args) do
     {:ok, body} = extend_args(wechat, args)
 
@@ -250,7 +252,7 @@ defmodule ExWechatpay do
        }} = ExWechatpay.Wechat.Client.Finch.query_transaction(wechat, :out_trade_no, "1217752501201407033233368018")
   """
   @spec query_transaction(t(), :out_trade_no | :transaction_id, String.t()) ::
-          ok_t(string_dict()) | err_t()
+          ok_t(Typespecs.string_dict()) | err_t()
   def query_transaction(wechat, :out_trade_no, out_trade_no) do
     normal_request(wechat,
       method: :get,
@@ -308,7 +310,7 @@ defmodule ExWechatpay do
         "timeStamp" => 1685676354
       }} = ExWechatpay.Wechat.Client.Finch.miniapp_payform(wechat, "testO_1234567890")
   """
-  @spec miniapp_payform(t(), String.t()) :: ok_t(string_dict())
+  @spec miniapp_payform(t(), String.t()) :: ok_t(Typespecs.string_dict())
   def miniapp_payform(wechat, prepay_id) do
     {:ok, Client.miniapp_payform(wechat.client, prepay_id)}
   end
@@ -349,7 +351,7 @@ defmodule ExWechatpay do
     })
 
   """
-  @spec create_refund(t(), string_dict()) :: ok_t(string_dict()) | err_t()
+  @spec create_refund(t(), Typespecs.string_dict()) :: ok_t(Typespecs.string_dict()) | err_t()
   def create_refund(wechat, body) do
     {:ok, body} =
       body
@@ -364,7 +366,7 @@ defmodule ExWechatpay do
   end
 
   @spec verify_resp(t(), ExWechatpay.Http.Response.t()) ::
-          ok_t(string_dict()) | err_t()
+          ok_t(Typespecs.string_dict()) | err_t()
   defp verify_resp(wechat, %{headers: headers, body: body}) do
     verify(wechat, headers, body)
     |> if do
@@ -374,7 +376,7 @@ defmodule ExWechatpay do
     end
   end
 
-  @spec extend_args(t(), string_dict()) :: {:ok, string_dict()}
+  @spec extend_args(t(), Typespecs.string_dict()) :: {:ok, Typespecs.string_dict()}
   defp extend_args(wechat, args) do
     args
     |> Map.put_new("appid", wechat.client.appid)
@@ -383,7 +385,7 @@ defmodule ExWechatpay do
     |> wechat.json_module.encode()
   end
 
-  @spec normal_request(t(), keyword()) :: ok_t(string_dict()) | err_t()
+  @spec normal_request(t(), Typespecs.opts()) :: ok_t(Typespecs.string_dict()) | err_t()
   defp normal_request(wechat, opts) do
     opts
     |> Request.new()

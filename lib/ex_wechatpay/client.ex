@@ -3,7 +3,7 @@ defmodule ExWechatpay.Client do
   微信支付客户端behaviour
   """
 
-  alias ExWechatpay.{Error, Http, Util, Request}
+  alias ExWechatpay.{Error, Http, Util, Request, Typespecs}
 
   require Logger
 
@@ -72,13 +72,6 @@ defmodule ExWechatpay.Client do
   @tag_length 16
 
   @type t :: %__MODULE__{}
-  @type opts :: keyword()
-  @type method :: Finch.Request.method()
-  @type api :: bitstring()
-  @type body :: %{String.t() => any()} | nil
-  @type params :: %{String.t() => any()} | nil
-  @type headers :: [{String.t(), String.t()}]
-  @type http_status :: non_neg_integer()
   @type client_options :: keyword(unquote(NimbleOptions.option_typespec(@client_options_schema)))
 
   defstruct name: __MODULE__,
@@ -119,13 +112,14 @@ defmodule ExWechatpay.Client do
     %{id: {__MODULE__, client.name}, start: {__MODULE__, :start_link, [opts]}}
   end
 
-  @spec start_link(opts()) :: GenServer.on_start()
+  @spec start_link(Typespecs.opts()) :: Typespecs.on_start()
   def start_link(opts) do
     {client, _opts} = Keyword.pop!(opts, :client)
     Http.start_link(client.http_client)
   end
 
-  @spec request(t(), Request.t(), opts()) :: {:ok, Http.Response.t()} | {:error, Error.t()}
+  @spec request(t(), Request.t(), Typespecs.opts()) ::
+          {:ok, Http.Response.t()} | {:error, Error.t()}
   def request(client, req, opts \\ []) do
     with auth <- Request.authorization(client, req),
          headers <- [
@@ -155,7 +149,7 @@ defmodule ExWechatpay.Client do
       true = verify(client, [{"header-key", "header-val"}], "notify body")
 
   """
-  @spec verify(t(), headers(), iodata()) :: boolean()
+  @spec verify(t(), Typespecs.headers(), Typespecs.body()) :: boolean()
   def verify(client, headers, body) do
     with headers <- Enum.into(headers, %{}, fn {k, v} -> {String.downcase(k), v} end),
          {_, wx_pub} <-

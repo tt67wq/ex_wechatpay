@@ -2,13 +2,12 @@ defmodule ExWechatpay.Http do
   @moduledoc """
   behavior os http transport
   """
-  alias ExWechatpay.{Error}
+  alias ExWechatpay.{Error, Typespecs}
 
   @type t :: struct()
-  @type opts :: keyword()
 
-  @callback new(opts()) :: t()
-  @callback start_link(http: t()) :: GenServer.on_start()
+  @callback new(Typespecs.opts()) :: t()
+  @callback start_link(http: t()) :: Typespecs.on_start()
   @callback do_request(
               http :: t(),
               req :: ExWechatpay.Http.Request.t()
@@ -18,6 +17,9 @@ defmodule ExWechatpay.Http do
   defp delegate(%module{} = http, func, args),
     do: apply(module, func, [http | args])
 
+  @spec do_request(t(), ExWechatpay.Http.Request.t()) ::
+          {:ok, ExWechatpay.Http.Response.t()}
+          | {:error, Error.t()}
   def do_request(http, req), do: delegate(http, :do_request, [req])
 
   def start_link(%module{} = http) do
@@ -30,6 +32,8 @@ defmodule ExWechatpay.Http.Request do
   http request
   """
   require Logger
+
+  alias ExWechatpay.{Typespecs}
 
   @http_request_schema [
     scheme: [
@@ -79,23 +83,18 @@ defmodule ExWechatpay.Http.Request do
     ]
   ]
 
-  @type opts :: keyword()
-  @type method :: Finch.Request.method()
-  @type headers :: [{String.t(), String.t()}]
-  @type body :: iodata() | nil
-  @type params :: %{String.t() => binary()} | nil
   @type http_request_schema_t :: [unquote(NimbleOptions.option_typespec(@http_request_schema))]
 
   @type t :: %__MODULE__{
           scheme: String.t(),
           host: String.t(),
           port: non_neg_integer(),
-          method: method(),
+          method: Typespecs.method(),
           path: bitstring(),
-          headers: headers(),
-          body: body(),
-          params: params(),
-          opts: opts()
+          headers: Typespecs.headers(),
+          body: Typespecs.body(),
+          params: Typespecs.params(),
+          opts: Typespecs.opts()
         }
 
   defstruct [
@@ -145,6 +144,9 @@ defmodule ExWechatpay.Http.Response do
   @moduledoc """
   http response
   """
+
+  alias ExWechatpay.{Typespecs}
+
   @http_response_schema [
     status_code: [
       type: :integer,
@@ -165,8 +167,8 @@ defmodule ExWechatpay.Http.Response do
 
   @type t :: %__MODULE__{
           status_code: non_neg_integer(),
-          headers: [{String.t(), String.t()}],
-          body: iodata() | nil
+          headers: Typespecs.headers(),
+          body: Typespecs.body()
         }
 
   @type http_response_schema_t :: [unquote(NimbleOptions.option_typespec(@http_response_schema))]
@@ -192,7 +194,7 @@ defmodule ExWechatpay.Http.Default do
 
   # types
   @type t :: %__MODULE__{
-          name: GenServer.name()
+          name: atom()
         }
 
   defstruct name: __MODULE__
