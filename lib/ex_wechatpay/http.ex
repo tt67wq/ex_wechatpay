@@ -216,16 +216,6 @@ defmodule ExWechatpay.Http.Default do
              req.body,
              opts
            ) do
-      # Logger.debug(%{
-      #   "method" => req.method,
-      #   "url" => Http.Request.url(req) |> URI.to_string(),
-      #   "params" => req.params,
-      #   "headers" => req.headers,
-      #   "body" => req.body,
-      #   "opts" => opts,
-      #   "req" => finch_req
-      # })
-
       finch_req
       |> Finch.request(http.name)
       |> case do

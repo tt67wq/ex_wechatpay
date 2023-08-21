@@ -3,6 +3,7 @@ defmodule ExWechatpay.Typespecs do
   some typespecs
   """
 
+  @type name :: atom() | {:global, term()} | {:via, module(), term()}
   @type opts :: keyword()
   @type method :: :get | :post | :head | :patch | :delete | :options | :put
   @type headers :: [{String.t(), String.t()}]

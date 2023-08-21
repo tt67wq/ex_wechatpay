@@ -65,7 +65,7 @@ defmodule ExWechatpay.Client do
     ],
     http_client: [
       type: :any,
-      doc: "http client instance, default: ExWechatpay.Wechat.Http.Finch.new()",
+      doc: "http client instance, default: ExWechatpay.Wechat.Http.Default.new()",
       required: true
     ]
   ]
