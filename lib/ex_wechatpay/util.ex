@@ -1,8 +1,6 @@
 defmodule ExWechatpay.Util do
   @moduledoc false
 
-  def debug(msg), do: tap(msg, &IO.inspect(&1))
-
   @spec timestamp(atom()) :: integer()
   def timestamp(typ \\ :seconds), do: :os.system_time(typ)
 

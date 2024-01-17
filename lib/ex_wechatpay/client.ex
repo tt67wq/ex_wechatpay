@@ -3,7 +3,11 @@ defmodule ExWechatpay.Client do
   微信支付客户端behaviour
   """
 
-  alias ExWechatpay.{Error, Http, Util, Request, Typespecs}
+  alias ExWechatpay.Error
+  alias ExWechatpay.Http
+  alias ExWechatpay.Request
+  alias ExWechatpay.Typespecs
+  alias ExWechatpay.Util
 
   require Logger
 
@@ -36,32 +40,27 @@ defmodule ExWechatpay.Client do
     apiv3_key: [
       type: :string,
       default: "",
-      doc:
-        "APIv3密钥, see https://pay.weixin.qq.com/wiki/doc/apiv3/wechatpay/wechatpay3_2.shtml for more details"
+      doc: "APIv3密钥, see https://pay.weixin.qq.com/wiki/doc/apiv3/wechatpay/wechatpay3_2.shtml for more details"
     ],
     wx_pubs: [
       type: {:list, :any},
       default: [{"wechatpay-serial", "pem"}],
-      doc:
-        "微信平台证书列表, see https://pay.weixin.qq.com/wiki/doc/apiv3/apis/wechatpay5_1.shtml for more details"
+      doc: "微信平台证书列表, see https://pay.weixin.qq.com/wiki/doc/apiv3/apis/wechatpay5_1.shtml for more details"
     ],
     client_serial_no: [
       type: :string,
       required: true,
-      doc:
-        "商户API证书序列号, see https://pay.weixin.qq.com/wiki/doc/apiv3/wechatpay/wechatpay7_0.shtml for more details"
+      doc: "商户API证书序列号, see https://pay.weixin.qq.com/wiki/doc/apiv3/wechatpay/wechatpay7_0.shtml for more details"
     ],
     client_key: [
       type: :string,
       required: true,
-      doc:
-        "商户API证书私钥, see https://pay.weixin.qq.com/wiki/doc/apiv3/wechatpay/wechatpay7_0.shtml for more details"
+      doc: "商户API证书私钥, see https://pay.weixin.qq.com/wiki/doc/apiv3/wechatpay/wechatpay7_0.shtml for more details"
     ],
     client_cert: [
       type: :string,
       required: true,
-      doc:
-        "商户API证书, see https://pay.weixin.qq.com/wiki/doc/apiv3/wechatpay/wechatpay7_0.shtml for more details"
+      doc: "商户API证书, see https://pay.weixin.qq.com/wiki/doc/apiv3/wechatpay/wechatpay7_0.shtml for more details"
     ],
     http_client: [
       type: :any,
@@ -100,8 +99,7 @@ defmodule ExWechatpay.Client do
       |> Keyword.replace_lazy(:client_key, &Util.load_pem(&1))
       |> Keyword.replace_lazy(:client_cert, &Util.load_pem(&1))
       |> Keyword.replace_lazy(:wx_pubs, fn pairs ->
-        pairs
-        |> Enum.map(fn {k, v} -> {k, Util.load_pem(v)} end)
+        Enum.map(pairs, fn {k, v} -> {k, Util.load_pem(v)} end)
       end)
 
     struct(__MODULE__, opts)
@@ -121,24 +119,26 @@ defmodule ExWechatpay.Client do
   @spec request(t(), Request.t(), Typespecs.opts()) ::
           {:ok, Http.Response.t()} | {:error, Error.t()}
   def request(client, req, opts \\ []) do
-    with auth <- Request.authorization(client, req),
-         headers <- [
-           {"Content-Type", "application/json"},
-           {"Accept", "application/json"},
-           {"Authorization", auth}
-         ],
-         http_req <-
-           Http.Request.new(
-             host: client.service_host,
-             method: req.method,
-             path: req.api,
-             headers: headers,
-             body: req.body,
-             params: req.params,
-             opts: opts
-           ) do
-      Http.do_request(client.http_client, http_req)
-    end
+    auth = Request.authorization(client, req)
+
+    headers = [
+      {"Content-Type", "application/json"},
+      {"Accept", "application/json"},
+      {"Authorization", auth}
+    ]
+
+    http_req =
+      Http.Request.new(
+        host: client.service_host,
+        method: req.method,
+        path: req.api,
+        headers: headers,
+        body: req.body,
+        params: req.params,
+        opts: opts
+      )
+
+    Http.do_request(client.http_client, http_req)
   end
 
   @doc """
@@ -151,13 +151,14 @@ defmodule ExWechatpay.Client do
   """
   @spec verify(t(), Typespecs.headers(), Typespecs.body()) :: boolean()
   def verify(client, headers, body) do
-    with headers <- Enum.into(headers, %{}, fn {k, v} -> {String.downcase(k), v} end),
-         {_, wx_pub} <-
+    headers = Map.new(headers, fn {k, v} -> {String.downcase(k), v} end)
+
+    with {_, wx_pub} <-
            Enum.find(client.wx_pubs, fn {x, _} -> x == headers["wechatpay-serial"] end),
-         ts <- headers["wechatpay-timestamp"],
-         nonce <- headers["wechatpay-nonce"],
-         string_to_sign <- "#{ts}\n#{nonce}\n#{body}\n",
-         encoded_wx_signature <- headers["wechatpay-signature"],
+         ts = headers["wechatpay-timestamp"],
+         nonce = headers["wechatpay-nonce"],
+         string_to_sign = "#{ts}\n#{nonce}\n#{body}\n",
+         encoded_wx_signature = headers["wechatpay-signature"],
          {:ok, wx_signature} <- Base.decode64(encoded_wx_signature) do
       :public_key.verify(string_to_sign, :sha256, wx_signature, wx_pub)
     end
@@ -179,37 +180,34 @@ defmodule ExWechatpay.Client do
   """
   @spec miniapp_payform(t(), String.t()) :: %{String.t() => String.t()}
   def miniapp_payform(client, prepay_id) do
-    with ts <- Util.timestamp(),
-         nonce <- Util.random_string(12),
-         package <- "prepay_id=#{prepay_id}",
-         signature <- sign_miniapp(client, ts, nonce, package) do
-      %{
-        "appid" => client.appid,
-        "timeStamp" => ts,
-        "nonceStr" => nonce,
-        "package" => package,
-        "signType" => "RSA",
-        "paySign" => signature
-      }
-    end
+    ts = Util.timestamp()
+    nonce = Util.random_string(12)
+    package = "prepay_id=#{prepay_id}"
+    signature = sign_miniapp(client, ts, nonce, package)
+
+    %{
+      "appid" => client.appid,
+      "timeStamp" => ts,
+      "nonceStr" => nonce,
+      "package" => package,
+      "signType" => "RSA",
+      "paySign" => signature
+    }
   end
 
   @doc """
   https://pay.weixin.qq.com/wiki/doc/apiv3/wechatpay/wechatpay4_2.shtml
   """
   @spec decrypt(t(), map()) :: binary() | {:error, term()}
-  def decrypt(
-        client,
-        %{
-          "algorithm" => "AEAD_AES_256_GCM",
-          "associated_data" => aad,
-          "ciphertext" => encoded_ciphertext,
-          "nonce" => nonce
-        }
-      ) do
+  def decrypt(client, %{
+        "algorithm" => "AEAD_AES_256_GCM",
+        "associated_data" => aad,
+        "ciphertext" => encoded_ciphertext,
+        "nonce" => nonce
+      }) do
     with {:ok, ciphertext} <- Base.decode64(encoded_ciphertext),
-         size_total <- byte_size(ciphertext),
-         ctext_len <- size_total - @tag_length,
+         size_total = byte_size(ciphertext),
+         ctext_len = size_total - @tag_length,
          <<ctext::binary-size(ctext_len), tag::binary-size(@tag_length)>> <- ciphertext do
       :crypto.crypto_one_time_aead(
         :aes_256_gcm,

@@ -2,7 +2,8 @@ defmodule ExWechatpay.Http do
   @moduledoc """
   behavior os http transport
   """
-  alias ExWechatpay.{Error, Typespecs}
+  alias ExWechatpay.Error
+  alias ExWechatpay.Typespecs
 
   @type t :: struct()
 
@@ -14,8 +15,7 @@ defmodule ExWechatpay.Http do
             ) ::
               {:ok, ExWechatpay.Http.Response.t()} | {:error, Error.t()}
 
-  defp delegate(%module{} = http, func, args),
-    do: apply(module, func, [http | args])
+  defp delegate(%module{} = http, func, args), do: apply(module, func, [http | args])
 
   @spec do_request(t(), ExWechatpay.Http.Request.t()) ::
           {:ok, ExWechatpay.Http.Response.t()}
@@ -31,9 +31,9 @@ defmodule ExWechatpay.Http.Request do
   @moduledoc """
   http request
   """
-  require Logger
+  alias ExWechatpay.Typespecs
 
-  alias ExWechatpay.{Typespecs}
+  require Logger
 
   @http_request_schema [
     scheme: [
@@ -117,7 +117,7 @@ defmodule ExWechatpay.Http.Request do
   """
   @spec new(http_request_schema_t()) :: t()
   def new(opts) do
-    opts = opts |> NimbleOptions.validate!(@http_request_schema)
+    opts = NimbleOptions.validate!(opts, @http_request_schema)
     struct(__MODULE__, opts)
   end
 
@@ -127,7 +127,7 @@ defmodule ExWechatpay.Http.Request do
       if req.params in [nil, %{}] do
         nil
       else
-        req.params |> URI.encode_query()
+        URI.encode_query(req.params)
       end
 
     %URI{
@@ -145,7 +145,7 @@ defmodule ExWechatpay.Http.Response do
   http response
   """
 
-  alias ExWechatpay.{Typespecs}
+  alias ExWechatpay.Typespecs
 
   @http_response_schema [
     status_code: [
@@ -177,7 +177,7 @@ defmodule ExWechatpay.Http.Response do
 
   @spec new(http_response_schema_t()) :: t()
   def new(opts) do
-    opts = opts |> NimbleOptions.validate!(@http_response_schema)
+    opts = NimbleOptions.validate!(opts, @http_response_schema)
     struct(__MODULE__, opts)
   end
 end
@@ -187,10 +187,12 @@ defmodule ExWechatpay.Http.Default do
   Implement ExWechatpay.Http behavior with Finch
   """
 
-  require Logger
-  alias ExWechatpay.{Http, Error}
+  @behaviour ExWechatpay.Http
 
-  @behaviour Http
+  alias ExWechatpay.Error
+  alias ExWechatpay.Http
+
+  require Logger
 
   # types
   @type t :: %__MODULE__{
@@ -201,35 +203,36 @@ defmodule ExWechatpay.Http.Default do
 
   @impl Http
   def new(opts \\ []) do
-    opts = opts |> Keyword.put_new(:name, __MODULE__)
+    opts = Keyword.put_new(opts, :name, __MODULE__)
     struct(__MODULE__, opts)
   end
 
   @impl Http
   def do_request(http, req) do
-    with opts <- opts(req.opts),
-         finch_req <-
-           Finch.build(
-             req.method,
-             Http.Request.url(req),
-             req.headers,
-             req.body,
-             opts
-           ) do
-      finch_req
-      |> Finch.request(http.name)
-      |> case do
-        {:ok, %Finch.Response{status: status, body: body, headers: headers}}
-        when status in 200..299 ->
-          {:ok, Http.Response.new(status_code: status, body: body, headers: headers)}
+    opts = opts(req.opts)
 
-        {:ok, %Finch.Response{status: status, body: body}} ->
-          {:error, Error.new("status: #{status}, body: #{body}")}
+    finch_req =
+      Finch.build(
+        req.method,
+        Http.Request.url(req),
+        req.headers,
+        req.body,
+        opts
+      )
 
-        {:error, exception} ->
-          raise exception
-          {:error, Error.new(inspect(exception))}
-      end
+    finch_req
+    |> Finch.request(http.name)
+    |> case do
+      {:ok, %Finch.Response{status: status, body: body, headers: headers}}
+      when status in 200..299 ->
+        {:ok, Http.Response.new(status_code: status, body: body, headers: headers)}
+
+      {:ok, %Finch.Response{status: status, body: body}} ->
+        {:error, Error.new("status: #{status}, body: #{body}")}
+
+      {:error, exception} ->
+        raise exception
+        {:error, Error.new(inspect(exception))}
     end
   end
 

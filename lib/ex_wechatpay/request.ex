@@ -3,7 +3,7 @@ defmodule ExWechatpay.Request do
   微信支付请求Request
   """
 
-  alias ExWechatpay.{Util}
+  alias ExWechatpay.Util
 
   @request_schema [
     method: [
@@ -40,8 +40,8 @@ defmodule ExWechatpay.Request do
 
   @spec new(request_schema_t()) :: t()
   def new(opts \\ []) do
-    opts = opts |> NimbleOptions.validate!(@request_schema)
-    %__MODULE__{} |> struct(opts)
+    opts = NimbleOptions.validate!(opts, @request_schema)
+    struct(%__MODULE__{}, opts)
   end
 
   @spec authorization(ExWechatpay.Client.t(), t()) :: String.t()

@@ -1,12 +1,15 @@
 defmodule ExWechatpay do
-  @external_resource "README.md"
   @moduledoc "README.md"
              |> File.read!()
              |> String.split("<!-- MDOC !-->")
              |> Enum.fetch!(1)
 
-  alias ExWechatpay.{Client, Request, Error, Typespecs}
+  alias ExWechatpay.Client
+  alias ExWechatpay.Error
+  alias ExWechatpay.Request
+  alias ExWechatpay.Typespecs
 
+  @external_resource "README.md"
   @wechat_payment_options [
     name: [
       type: :atom,
@@ -44,7 +47,7 @@ defmodule ExWechatpay do
   """
   @spec new(options_t()) :: t()
   def new(opts) do
-    opts = opts |> NimbleOptions.validate!(@wechat_payment_options)
+    opts = NimbleOptions.validate!(opts, @wechat_payment_options)
     struct(__MODULE__, opts)
   end
 
@@ -90,32 +93,33 @@ defmodule ExWechatpay do
   """
   @spec get_certificates(t()) :: ok_t(Typespecs.string_dict()) | err_t()
   def get_certificates(wechat, verify \\ true) do
-    with req <-
-           Request.new(
-             method: :get,
-             api: "/v3/certificates"
-           ),
-         {:ok, %{body: body, headers: headers}} <-
+    req =
+      Request.new(
+        method: :get,
+        api: "/v3/certificates"
+      )
+
+    with {:ok, %{body: body, headers: headers}} <-
            Client.request(wechat.client, req) do
       if verify do
-        verify(wechat, headers, body)
+        wechat
+        |> verify(headers, body)
         |> if do
           {:ok, %{"data" => data}} =
-            body
-            |> wechat.json_module.decode()
+            wechat.json_module.decode(body)
 
-          data =
-            data
-            |> Enum.map(fn %{"encrypt_certificate" => encrypt_certificate} = x ->
-              Map.put(x, "certificate", Client.decrypt(wechat.client, encrypt_certificate))
-            end)
-
-          {:ok, %{"data" => data}}
+          {:ok, %{"data" => decrypt_certificates(data, wechat.client)}}
         else
           {:error, Error.new(:verify_failed)}
         end
       end
     end
+  end
+
+  defp decrypt_certificates(certificates, client) do
+    Enum.map(certificates, fn %{"encrypt_certificate" => encrypt_certificate} = x ->
+      Map.put(x, "certificate", Client.decrypt(client, encrypt_certificate))
+    end)
   end
 
   @doc """
@@ -280,11 +284,10 @@ defmodule ExWechatpay do
   @spec close_transaction(t(), String.t()) :: :ok | err_t()
   def close_transaction(wechat, out_trade_no) do
     {:ok, body} =
-      %{"mchid" => wechat.client.mchid}
-      |> wechat.json_module.encode()
+      wechat.json_module.encode(%{"mchid" => wechat.client.mchid})
 
-    normal_request(
-      wechat,
+    wechat
+    |> normal_request(
       method: :post,
       api: "/v3/pay/transactions/out-trade-no/#{out_trade_no}/close",
       body: body
@@ -368,7 +371,8 @@ defmodule ExWechatpay do
   @spec verify_resp(t(), ExWechatpay.Http.Response.t()) ::
           ok_t(Typespecs.string_dict()) | err_t()
   defp verify_resp(wechat, %{headers: headers, body: body}) do
-    verify(wechat, headers, body)
+    wechat
+    |> verify(headers, body)
     |> if do
       decode_body(wechat, body)
     else

@@ -1,6 +1,13 @@
 version: "3"
 
 tasks:
+  compile:
+    env:
+      MIX_ENV: dev
+    cmds:
+      - mix deps.get
+      - mix clean;mix compile
+
   build:
     env:
       MIX_ENV: dev
