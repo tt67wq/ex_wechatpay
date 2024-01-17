@@ -11,7 +11,7 @@
 ```Elixir
 def deps do
   [
-    {:wechat_pay, "~> 0.1.0"}
+    {:wechat_pay, "~> 0.1"}
   ]
 end
 ```
