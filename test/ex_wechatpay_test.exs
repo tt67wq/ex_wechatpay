@@ -4,7 +4,7 @@ defmodule ExWechatpayTest do
   alias ExWechatpay.Util
 
   setup_all do
-    test_data = File.read!("tmp/test.json") |> Jason.decode!()
+    test_data = "tmp/test.json" |> File.read!() |> Jason.decode!()
     # {
     #     "appid": "wxefd6b2150cac",
     #     "mchid": "1611167",
@@ -30,9 +30,7 @@ defmodule ExWechatpayTest do
         client_serial_no: test_data["client_serial_no"],
         client_key: test_data["client_key"],
         client_cert: test_data["client_cert"],
-        wx_pubs:
-          test_data["wx_pubs"] |> Enum.map(fn x -> {x["wechatpay-serial"], x["public_key"]} end),
-        http_client: ExWechatpay.Http.Default.new()
+        wx_pubs: Enum.map(test_data["wx_pubs"], fn x -> {x["wechatpay-serial"], x["public_key"]} end)
       )
 
     wechat = ExWechatpay.new(client: client)

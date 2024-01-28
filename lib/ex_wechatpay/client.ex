@@ -65,7 +65,7 @@ defmodule ExWechatpay.Client do
     http_client: [
       type: :any,
       doc: "http client instance, default: ExWechatpay.Wechat.Http.Default.new()",
-      required: true
+      default: ExWechatpay.Http.Default.new()
     ]
   ]
   @tag_length 16
