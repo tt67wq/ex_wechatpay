@@ -136,6 +136,27 @@ defmodule ExWechatpay do
   end
 
   @doc """
+  解密回调信息
+
+  ## Examples
+
+      {:ok, "1217752501201407033233368018"} = decrypt(wechat, %{
+          "algorithm" => "AEAD_AES_256_GCM",
+          "ciphertext" => "BoiqBLxeEtXMAmD7pm+...w==",
+          "nonce" => "2862867afb33",
+          "associated_data" => "transaction"
+        })
+  """
+  def decrypt(wechat, encrypted_form) do
+    wechat.client
+    |> Client.decrypt(encrypted_form)
+    |> case do
+      {:error, _} = err -> err
+      ret -> {:ok, ret}
+    end
+  end
+
+  @doc """
   Native下单API
   https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_4_1.shtml
 
