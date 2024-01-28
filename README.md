@@ -71,7 +71,6 @@ iex> client =
     client_cert: test_data["client_cert"],
     wx_pubs:
       test_data["wx_pubs"] |> Enum.map(fn x -> {x["wechatpay-serial"], x["public_key"]} end),
-    http_module: ExWechatpay.Http.Finch,
     http_client: ExWechatpay.Http.Finch.new()
   )
 ```
