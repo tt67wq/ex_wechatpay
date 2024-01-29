@@ -231,7 +231,6 @@ defmodule ExWechatpay.Http.Default do
         {:error, Error.new("status: #{status}, body: #{body}")}
 
       {:error, exception} ->
-        raise exception
         {:error, Error.new(inspect(exception))}
     end
   end
