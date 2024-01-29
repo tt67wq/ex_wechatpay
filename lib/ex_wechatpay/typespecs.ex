@@ -15,5 +15,5 @@ defmodule ExWechatpay.Typespecs do
           | :ignore
           | {:error, {:already_started, pid()} | term()}
 
-  @type string_dict :: %{bitstring() => any()}
+  @type string_dict :: %{String.t() => any()}
 end
