@@ -3,7 +3,7 @@ defmodule ExWechatpay.MixProject do
   use Mix.Project
 
   @name "ex_wechatpay"
-  @version "0.1.3"
+  @version "0.1.4"
   @repo_url "https://github.com/tt67wq/ex_wechatpay"
   @description "Elixir SDK of wechat pay"
 
