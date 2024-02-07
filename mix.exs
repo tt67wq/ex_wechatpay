@@ -3,7 +3,7 @@ defmodule ExWechatpay.MixProject do
   use Mix.Project
 
   @name "ex_wechatpay"
-  @version "0.1.4"
+  @version "0.1.5"
   @repo_url "https://github.com/tt67wq/ex_wechatpay"
   @description "Elixir SDK of wechat pay"
 
@@ -31,7 +31,7 @@ defmodule ExWechatpay.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:nimble_options, "~> 0.5"},
+      {:nimble_options, "~> 1.1"},
       {:finch, "~> 0.17", optional: true},
       {:jason, "~> 1.4", optional: true},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
