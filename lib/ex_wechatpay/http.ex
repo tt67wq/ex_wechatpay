@@ -2,7 +2,7 @@ defmodule ExWechatpay.Http do
   @moduledoc """
   behavior os http transport
   """
-  alias ExWechatpay.Error
+  alias ExWechatpay.Exception
   alias ExWechatpay.Typespecs
 
   @type t :: struct()
@@ -12,14 +12,11 @@ defmodule ExWechatpay.Http do
   @callback do_request(
               http :: t(),
               req :: ExWechatpay.Http.Request.t()
-            ) ::
-              {:ok, ExWechatpay.Http.Response.t()} | {:error, Error.t()}
+            ) :: {:ok, ExWechatpay.Http.Response.t()} | {:error, Exception.t()}
 
   defp delegate(%module{} = http, func, args), do: apply(module, func, [http | args])
 
-  @spec do_request(t(), ExWechatpay.Http.Request.t()) ::
-          {:ok, ExWechatpay.Http.Response.t()}
-          | {:error, Error.t()}
+  @spec do_request(t(), ExWechatpay.Http.Request.t()) :: {:ok, ExWechatpay.Http.Response.t()} | {:error, Exception.t()}
   def do_request(http, req), do: delegate(http, :do_request, [req])
 
   def start_link(%module{} = http) do
@@ -189,7 +186,7 @@ defmodule ExWechatpay.Http.Default do
 
   @behaviour ExWechatpay.Http
 
-  alias ExWechatpay.Error
+  alias ExWechatpay.Exception
   alias ExWechatpay.Http
 
   require Logger
@@ -228,10 +225,10 @@ defmodule ExWechatpay.Http.Default do
         {:ok, Http.Response.new(status_code: status, body: body, headers: headers)}
 
       {:ok, %Finch.Response{status: status, body: body}} ->
-        {:error, Error.new("status: #{status}, body: #{body}")}
+        {:error, Exception.new("bad response", %{status: status, body: body})}
 
       {:error, exception} ->
-        {:error, Error.new(inspect(exception))}
+        {:error, Exception.new("bad response", exception)}
     end
   end
 

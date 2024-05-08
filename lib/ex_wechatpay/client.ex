@@ -3,7 +3,7 @@ defmodule ExWechatpay.Client do
   微信支付客户端behaviour
   """
 
-  alias ExWechatpay.Error
+  alias ExWechatpay.Exception
   alias ExWechatpay.Http
   alias ExWechatpay.Request
   alias ExWechatpay.Typespecs
@@ -117,7 +117,7 @@ defmodule ExWechatpay.Client do
   end
 
   @spec request(t(), Request.t(), Typespecs.opts()) ::
-          {:ok, Http.Response.t()} | {:error, Error.t()}
+          {:ok, Http.Response.t()} | {:error, Exception.t()}
   def request(client, req, opts \\ []) do
     auth = Request.authorization(client, req)
 
@@ -198,7 +198,7 @@ defmodule ExWechatpay.Client do
   @doc """
   https://pay.weixin.qq.com/wiki/doc/apiv3/wechatpay/wechatpay4_2.shtml
   """
-  @spec decrypt(t(), map()) :: binary() | {:error, term()}
+  @spec decrypt(t(), map()) :: binary() | :error
   def decrypt(client, %{
         "algorithm" => "AEAD_AES_256_GCM",
         "associated_data" => aad,

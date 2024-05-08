@@ -32,10 +32,10 @@ defmodule ExWechatpay.MixProject do
   defp deps do
     [
       {:nimble_options, "~> 1.1"},
-      {:finch, "~> 0.17", optional: true},
+      {:finch, "~> 0.18", optional: true},
       {:jason, "~> 1.4", optional: true},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:ex_doc, "~> 0.31", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.32", only: :dev, runtime: false},
       {:styler, "~> 0.11", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev], runtime: false}
       # {:dep_from_hexpm, "~> 0.3.0"},

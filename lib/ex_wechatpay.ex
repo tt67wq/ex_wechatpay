@@ -5,7 +5,7 @@ defmodule ExWechatpay do
              |> Enum.fetch!(1)
 
   alias ExWechatpay.Client
-  alias ExWechatpay.Error
+  alias ExWechatpay.Exception
   alias ExWechatpay.Request
   alias ExWechatpay.Typespecs
 
@@ -34,7 +34,7 @@ defmodule ExWechatpay do
           json_module: atom()
         }
   @type ok_t(ret) :: {:ok, ret}
-  @type err_t() :: {:error, Error.t()}
+  @type err_t() :: {:error, Exception.t()}
   @type options_t :: keyword(unquote(NimbleOptions.option_typespec(@wechat_payment_options)))
 
   defstruct [:name, :client, :json_module]
@@ -110,7 +110,7 @@ defmodule ExWechatpay do
 
           {:ok, %{"data" => decrypt_certificates(data, wechat.client)}}
         else
-          {:error, Error.new(:verify_failed)}
+          {:error, Exception.new("verify_failed", %{"headers" => headers, "body" => body})}
         end
       end
     end
@@ -151,7 +151,7 @@ defmodule ExWechatpay do
     wechat.client
     |> Client.decrypt(encrypted_form)
     |> case do
-      {:error, _} = err -> err
+      :error -> {:error, Exception.new("decrypt_failed", %{"encrypted_form" => encrypted_form})}
       ret -> {:ok, ret}
     end
   end
@@ -397,7 +397,7 @@ defmodule ExWechatpay do
     |> if do
       decode_body(wechat, body)
     else
-      {:error, Error.new(:verify_failed)}
+      {:error, Exception.new("wechatpay verify failed", %{"headers" => headers, "body" => body})}
     end
   end
 
