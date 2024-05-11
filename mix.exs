@@ -14,6 +14,7 @@ defmodule ExWechatpay.MixProject do
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
+      elixirc_paths: elixirc_paths(Mix.env()),
       source_url: @repo_url,
       name: @name,
       package: package(),
@@ -51,4 +52,7 @@ defmodule ExWechatpay.MixProject do
       }
     ]
   end
+
+  defp elixirc_paths(env) when env in ~w(test)a, do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
 end

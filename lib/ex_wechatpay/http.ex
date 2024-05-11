@@ -3,209 +3,43 @@ defmodule ExWechatpay.Http do
   behavior os http transport
   """
   alias ExWechatpay.Exception
+  alias ExWechatpay.Model.Http
   alias ExWechatpay.Typespecs
 
-  @type t :: struct()
-
-  @callback new(Typespecs.opts()) :: t()
-  @callback start_link(http: t()) :: Typespecs.on_start()
   @callback do_request(
-              http :: t(),
-              req :: ExWechatpay.Http.Request.t()
-            ) :: {:ok, ExWechatpay.Http.Response.t()} | {:error, Exception.t()}
-
-  defp delegate(%module{} = http, func, args), do: apply(module, func, [http | args])
-
-  @spec do_request(t(), ExWechatpay.Http.Request.t()) :: {:ok, ExWechatpay.Http.Response.t()} | {:error, Exception.t()}
-  def do_request(http, req), do: delegate(http, :do_request, [req])
-
-  def start_link(%module{} = http) do
-    apply(module, :start_link, [[http: http]])
-  end
+              name :: pid() | {atom(), node()} | Typespecs.name(),
+              req :: Http.Request.t()
+            ) ::
+              {:ok, Http.Response.t()} | {:error, Exception.t()}
 end
 
-defmodule ExWechatpay.Http.Request do
-  @moduledoc """
-  http request
-  """
-  alias ExWechatpay.Typespecs
-
-  require Logger
-
-  @http_request_schema [
-    scheme: [
-      type: :string,
-      doc: "http scheme",
-      default: "https"
-    ],
-    host: [
-      type: :string,
-      doc: "http host",
-      required: true
-    ],
-    port: [
-      type: :integer,
-      doc: "http port",
-      default: 443
-    ],
-    method: [
-      type: :any,
-      doc: "http method",
-      default: :get
-    ],
-    path: [
-      type: :string,
-      doc: "http path",
-      default: "/"
-    ],
-    headers: [
-      type: {:list, :any},
-      doc: "http headers",
-      default: []
-    ],
-    body: [
-      type: :any,
-      doc: "http body",
-      default: nil
-    ],
-    params: [
-      type: {:map, :string, :string},
-      doc: "http query params",
-      default: %{}
-    ],
-    opts: [
-      type: :keyword_list,
-      doc: "http opts",
-      default: []
-    ]
-  ]
-
-  @type http_request_schema_t :: [unquote(NimbleOptions.option_typespec(@http_request_schema))]
-
-  @type t :: %__MODULE__{
-          scheme: String.t(),
-          host: String.t(),
-          port: non_neg_integer(),
-          method: Typespecs.method(),
-          path: bitstring(),
-          headers: Typespecs.headers(),
-          body: Typespecs.body(),
-          params: Typespecs.params(),
-          opts: Typespecs.opts()
-        }
-
-  defstruct [
-    :scheme,
-    :host,
-    :port,
-    :method,
-    :path,
-    :headers,
-    :body,
-    :params,
-    :opts
-  ]
-
-  @doc """
-  create new http request instance
-
-  ## Params
-  #{NimbleOptions.docs(@http_request_schema)}
-  """
-  @spec new(http_request_schema_t()) :: t()
-  def new(opts) do
-    opts = NimbleOptions.validate!(opts, @http_request_schema)
-    struct(__MODULE__, opts)
-  end
-
-  @spec url(t()) :: URI.t()
-  def url(req) do
-    query =
-      if req.params in [nil, %{}] do
-        nil
-      else
-        URI.encode_query(req.params)
-      end
-
-    %URI{
-      scheme: req.scheme,
-      host: req.host,
-      path: req.path,
-      query: query,
-      port: req.port
-    }
-  end
-end
-
-defmodule ExWechatpay.Http.Response do
-  @moduledoc """
-  http response
-  """
-
-  alias ExWechatpay.Typespecs
-
-  @http_response_schema [
-    status_code: [
-      type: :integer,
-      doc: "http status code",
-      default: 200
-    ],
-    headers: [
-      type: {:list, :any},
-      doc: "http headers",
-      default: []
-    ],
-    body: [
-      type: :string,
-      doc: "http body",
-      default: ""
-    ]
-  ]
-
-  @type t :: %__MODULE__{
-          status_code: non_neg_integer(),
-          headers: Typespecs.headers(),
-          body: Typespecs.body()
-        }
-
-  @type http_response_schema_t :: [unquote(NimbleOptions.option_typespec(@http_response_schema))]
-
-  defstruct [:status_code, :headers, :body]
-
-  @spec new(http_response_schema_t()) :: t()
-  def new(opts) do
-    opts = NimbleOptions.validate!(opts, @http_response_schema)
-    struct(__MODULE__, opts)
-  end
-end
-
-defmodule ExWechatpay.Http.Default do
+defmodule ExWechatpay.Http.Finch do
   @moduledoc """
   Implement ExWechatpay.Http behavior with Finch
   """
 
   @behaviour ExWechatpay.Http
 
+  use Agent
+
   alias ExWechatpay.Exception
-  alias ExWechatpay.Http
+  alias ExWechatpay.Model.Http
 
   require Logger
 
-  # types
-  @type t :: %__MODULE__{
-          name: atom()
-        }
-
-  defstruct name: __MODULE__
-
-  @impl Http
-  def new(opts \\ []) do
-    opts = Keyword.put_new(opts, :name, __MODULE__)
-    struct(__MODULE__, opts)
+  def start_link({finch_name, agent_name}) do
+    Agent.start_link(fn -> finch_name end, name: agent_name)
   end
 
-  @impl Http
-  def do_request(http, req) do
+  defp opts(nil), do: [receive_timeout: 5000]
+  defp opts(options), do: Keyword.put_new(options, :receive_timeout, 5000)
+
+  @impl ExWechatpay.Http
+  def do_request(agent_name, req) do
+    Agent.get(agent_name, __MODULE__, :handle_do_request, [req])
+  end
+
+  def handle_do_request(finch_name, req) do
     opts = opts(req.opts)
 
     finch_req =
@@ -218,11 +52,11 @@ defmodule ExWechatpay.Http.Default do
       )
 
     finch_req
-    |> Finch.request(http.name)
+    |> Finch.request(finch_name)
     |> case do
       {:ok, %Finch.Response{status: status, body: body, headers: headers}}
       when status in 200..299 ->
-        {:ok, Http.Response.new(status_code: status, body: body, headers: headers)}
+        {:ok, %Http.Response{status_code: status, body: body, headers: headers}}
 
       {:ok, %Finch.Response{status: status, body: body}} ->
         {:error, Exception.new("bad response", %{status: status, body: body})}
@@ -230,19 +64,5 @@ defmodule ExWechatpay.Http.Default do
       {:error, exception} ->
         {:error, Exception.new("bad response", exception)}
     end
-  end
-
-  defp opts(nil), do: [receive_timeout: 5000]
-  defp opts(options), do: Keyword.put_new(options, :receive_timeout, 5000)
-
-  def child_spec(opts) do
-    http = Keyword.fetch!(opts, :http)
-    %{id: {__MODULE__, http.name}, start: {__MODULE__, :start_link, [opts]}}
-  end
-
-  @impl Http
-  def start_link(opts) do
-    {http, _opts} = Keyword.pop!(opts, :http)
-    Finch.start_link(name: http.name)
   end
 end
