@@ -26,8 +26,25 @@ defmodule ExWechatpayTest do
     :ok
   end
 
+  # @tag exec: true
   test "get_certificates" do
     assert {:ok, res} = App.get_certificates()
+    ExWechatpay.Debug.debug(res)
+  end
+
+  @tag exec: true
+  test "create_native_transaction" do
+    assert {:ok, res} =
+             App.create_native_transaction(%{
+               "description" => "Image形象店-深圳腾大-QQ公仔",
+               "out_trade_no" => "1217752501201407033233368018",
+               "notify_url" => "https://www.weixin.qq.com/wxpay/pay.php",
+               "amount" => %{
+                 "total" => 1,
+                 "currency" => "CNY"
+               }
+             })
+
     ExWechatpay.Debug.debug(res)
   end
 end

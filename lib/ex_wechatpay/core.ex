@@ -66,8 +66,8 @@ defmodule ExWechatpay.Core do
     })
   end
 
-  @spec verify(ConfigOption.t(), Typespecs.headers(), Typespecs.body()) :: boolean()
-  defp verify(config, headers, body) do
+  @spec do_verify(ConfigOption.t(), Typespecs.headers(), Typespecs.body()) :: boolean()
+  defp do_verify(config, headers, body) do
     headers = Map.new(headers, fn {k, v} -> {String.downcase(k), v} end)
 
     with {_, wx_pub} <-
@@ -81,20 +81,6 @@ defmodule ExWechatpay.Core do
     end
   end
 
-  @doc """
-  create miniapp payform with a prepay_id
-
-  ## Examples
-
-      %{
-        "appid" => "wxefd6b215fca0cacd",
-        "nonceStr" => "ODnHX8RwAlw0",
-        "package" => "prepay_id=wx28094533993528b1d687203f4f48e20000",
-        "paySign" => "xxxx",
-        "signType" => "RSA",
-        "timeStamp" => 1624844734
-      } = miniapp_payform(client, "wx28094533993528b1d687203f4f48e20000")
-  """
   @spec miniapp_payform(module(), String.t()) :: Typespecs.dict()
   def miniapp_payform(name, prepay_id) do
     config = get(name)
@@ -122,8 +108,8 @@ defmodule ExWechatpay.Core do
   end
 
   # https://pay.weixin.qq.com/wiki/doc/apiv3/wechatpay/wechatpay4_2.shtml
-  @spec decrypt(ConfigOption.t(), Typespecs.dict()) :: binary() | :error
-  defp decrypt(config, %{
+  @spec do_decrypt(ConfigOption.t(), Typespecs.dict()) :: binary() | :error
+  defp do_decrypt(config, %{
          "algorithm" => "AEAD_AES_256_GCM",
          "associated_data" => aad,
          "ciphertext" => encoded_ciphertext,
@@ -146,41 +132,14 @@ defmodule ExWechatpay.Core do
     end
   end
 
-  @doc """
-  获取平台证书
-  https://pay.weixin.qq.com/wiki/doc/apiv3/apis/wechatpay5_1.shtml
-
-  后续用 openssl x509 -in some_cert.pem -pubkey 导出平台公钥
-
-  ## Examples
-      {
-        :ok,
-        %{
-          "data" => [
-            %{
-              "certificate" => "-----BEGIN CERTIFICATE-----\nMIID3DCCAsSgAwIBAgIUNc4x7Y9KULkw...\n-----END CERTIFICATE-----",
-              "effective_time" => "2021-06-23T14:09:22+08:00",
-              "encrypt_certificate" => %{
-                "algorithm" => "AEAD_AES_256_GCM",
-                "associated_data" => "certificate",
-                "ciphertext" => "BoiqBLxeEtXMAmD7pm+...w==",
-                "nonce" => "2862867afb33"
-              },
-              "expire_time" => "2026-06-22T14:09:22+08:00",
-              "serial_no" => "35CE31ED8F4A50B930FF8D37C51B5ADA03265E72"
-            }
-          ]
-        }
-      } = get_certificates(Wechat)
-  """
   @spec get_certificates(module()) :: {:ok, Typespecs.dict()} | err_t()
   def get_certificates(name, verify \\ true) do
     config = get(name)
 
-    with {:ok, %{body: body, headers: headers}} <- request(config, :get, "/v3/certificates", %{}, nil) do
+    with {:ok, %Http.Response{body: body, headers: headers}} <- request(config, :get, "/v3/certificates", %{}, nil) do
       if verify do
         config
-        |> verify(headers, body)
+        |> do_verify(headers, body)
         |> if do
           {:ok, %{"data" => data}} =
             Jason.decode(body)
@@ -195,7 +154,61 @@ defmodule ExWechatpay.Core do
 
   defp decrypt_certificates(certificates, config) do
     Enum.map(certificates, fn %{"encrypt_certificate" => encrypt_certificate} = x ->
-      Map.put(x, "certificate", decrypt(config, encrypt_certificate))
+      Map.put(x, "certificate", do_decrypt(config, encrypt_certificate))
     end)
+  end
+
+  @spec verify(module(), Typespecs.headers(), Typespecs.body()) :: boolean()
+  def verify(name, headers, body) do
+    name
+    |> get()
+    |> do_verify(headers, body)
+  end
+
+  @spec decrypt(module(), Typespecs.dict()) :: {:ok, binary()} | err_t()
+  def decrypt(name, encrypted_form) do
+    name
+    |> get()
+    |> do_decrypt(encrypted_form)
+    |> case do
+      :error -> {:error, Exception.new("decrypt_failed", %{"encrypted_form" => encrypted_form})}
+      ret -> {:ok, ret}
+    end
+  end
+
+  @spec extend_args(ConfigOption.t(), Typespecs.dict()) :: {:ok, binary()}
+  defp extend_args(config, args) do
+    args
+    |> Map.put_new("appid", config[:appid])
+    |> Map.put_new("mchid", config[:mchid])
+    |> Map.put_new("notify_url", config[:notify_url])
+    |> Jason.encode()
+  end
+
+  @spec verify_resp(ConfigOption.t(), Http.Response.t()) :: ok_t(Typespecs.dict()) | err_t()
+  defp verify_resp(config, resp) do
+    %Http.Response{headers: headers, body: body} = resp
+
+    config
+    |> do_verify(headers, body)
+    |> if do
+      case body do
+        "" -> {:ok, %{}}
+        nil -> {:ok, %{}}
+        _ -> Jason.decode(body)
+      end
+    else
+      {:error, Exception.new("wechatpay verify failed", %{"headers" => headers, "body" => body})}
+    end
+  end
+
+  @spec create_native_transaction(module(), Typespecs.dict()) :: ok_t(Typespecs.dict()) | err_t()
+  def create_native_transaction(name, args) do
+    config = get(name)
+    {:ok, body} = extend_args(config, args)
+
+    with {:ok, resp} <- request(config, :post, "/v3/pay/transactions/native", %{}, body) do
+      verify_resp(config, resp)
+    end
   end
 end
