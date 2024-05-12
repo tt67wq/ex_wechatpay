@@ -54,4 +54,8 @@ defmodule ExWechatpay.Model.ConfigOption do
   def validate(opts) do
     NimbleOptions.validate(opts, @config_options_schema)
   end
+
+  def validate!(opts) do
+    NimbleOptions.validate!(opts, @config_options_schema)
+  end
 end

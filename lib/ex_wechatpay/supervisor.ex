@@ -12,9 +12,9 @@ defmodule ExWechatpay.Supervisor do
   def init({name, config}) do
     children =
       [
-        {ExWechatpay.Core, {name, config}},
         {Finch, name: finch_name(name)},
-        {ExWechatpay.Http.Finch, {finch_name(name), http_name(name)}}
+        {ExWechatpay.Http.Finch, {finch_name(name), http_name(name)}},
+        {ExWechatpay.Core, {name, http_name(name), config}}
       ]
 
     Supervisor.init(children, strategy: :one_for_one)

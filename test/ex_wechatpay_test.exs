@@ -27,6 +27,7 @@ defmodule ExWechatpayTest do
   end
 
   test "get_certificates" do
-    IO.inspect(App.get_certificates())
+    assert {:ok, res} = App.get_certificates()
+    ExWechatpay.Debug.debug(res)
   end
 end

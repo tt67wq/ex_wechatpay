@@ -15,7 +15,17 @@ defmodule ExWechatpay.Core do
   @http_impl ExWechatpay.Http.Finch
   @tag_length 16
 
-  def start_link({name, config}) do
+  def start_link({name, http_name, config}) do
+    config =
+      config
+      |> ConfigOption.validate!()
+      |> Keyword.replace_lazy(:client_key, &Util.load_pem(&1))
+      |> Keyword.replace_lazy(:client_cert, &Util.load_pem(&1))
+      |> Keyword.replace_lazy(:wx_pubs, fn pairs ->
+        Enum.map(pairs, fn {k, v} -> {k, Util.load_pem(v)} end)
+      end)
+      |> Keyword.put(:http_name, http_name)
+
     Agent.start_link(fn -> config end, name: name)
   end
 
@@ -23,8 +33,8 @@ defmodule ExWechatpay.Core do
     Agent.get(name, & &1)
   end
 
-  defp call_http(req) do
-    apply(@http_impl, :do_requst, [:http, req])
+  defp call_http(name, req) do
+    apply(@http_impl, :do_request, [name, req])
   end
 
   @spec request(
@@ -45,7 +55,7 @@ defmodule ExWechatpay.Core do
       {"Authorization", auth}
     ]
 
-    call_http(%Http.Request{
+    call_http(config[:http_name], %Http.Request{
       host: config[:service_host],
       method: method,
       path: api,
