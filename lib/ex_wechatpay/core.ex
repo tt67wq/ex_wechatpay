@@ -132,7 +132,7 @@ defmodule ExWechatpay.Core do
     end
   end
 
-  @spec get_certificates(module()) :: {:ok, Typespecs.dict()} | err_t()
+  @spec get_certificates(module(), boolean()) :: {:ok, Typespecs.dict()} | err_t()
   def get_certificates(name, verify \\ true) do
     config = get(name)
 

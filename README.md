@@ -24,8 +24,8 @@ end
 - mchid: 商户号;
 - notify_url: 订单信息的回调地址；
 - apiv3_key: [apiv3密钥](https://pay.weixin.qq.com/wiki/doc/apiv3/wechatpay/wechatpay3_2.shtml)
-- wx_pubs: [微信平台证书列表](https://pay.weixin.qq.com/wiki/doc/apiv3/apis/wechatpay5_1.shtml)，如果是首次使用可不配置，用`ExWechatpay.get_certificates/2`可下载证书信息
-- client_serial_no: [商户API证书序列号](https://pay.weixin.qq.com/wiki/doc/apiv3/wechatpay/wechatpay7_0.shtml)，如果是首次使用可不配置，用`ExWechatpay.get_certificates/2`可下载证书信息
+- wx_pubs: [微信平台证书列表](https://pay.weixin.qq.com/wiki/doc/apiv3/apis/wechatpay5_1.shtml)，如果是首次使用可不配置，用`ExWechatpay.get_certificates`可下载证书信息
+- client_serial_no: [商户API证书序列号](https://pay.weixin.qq.com/wiki/doc/apiv3/wechatpay/wechatpay7_0.shtml)，如果是首次使用可不配置，用`ExWechatpay.get_certificates`可下载证书信息
 - client_key: [商户API证书私钥](https://pay.weixin.qq.com/wiki/doc/apiv3/wechatpay/wechatpay7_0.shtml)
 - client_cert: [商户API证书](https://pay.weixin.qq.com/wiki/doc/apiv3/wechatpay/wechatpay7_0.shtml)
 
