@@ -3,7 +3,7 @@ defmodule ExWechatpay.MixProject do
   use Mix.Project
 
   @name "ex_wechatpay"
-  @version "0.1.6"
+  @version "0.2.0"
   @repo_url "https://github.com/tt67wq/ex_wechatpay"
   @description "Elixir SDK of wechat pay"
 
@@ -11,7 +11,7 @@ defmodule ExWechatpay.MixProject do
     [
       app: :ex_wechatpay,
       version: @version,
-      elixir: "~> 1.14",
+      elixir: "~> 1.16",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       elixirc_paths: elixirc_paths(Mix.env()),

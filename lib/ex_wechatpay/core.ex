@@ -211,4 +211,67 @@ defmodule ExWechatpay.Core do
       verify_resp(config, resp)
     end
   end
+
+  @spec create_jsapi_transaction(module(), Typespecs.dict()) :: ok_t(Typespecs.dict()) | err_t()
+  def create_jsapi_transaction(name, args) do
+    config = get(name)
+    {:ok, body} = extend_args(config, args)
+
+    with {:ok, resp} <- request(config, :post, "/v3/pay/transactions/jsapi", %{}, body) do
+      verify_resp(config, resp)
+    end
+  end
+
+  @spec create_h5_transaction(module(), Typespecs.dict()) :: ok_t(Typespecs.dict()) | err_t()
+  def create_h5_transaction(name, args) do
+    config = get(name)
+    {:ok, body} = extend_args(config, args)
+
+    with {:ok, resp} <- request(config, :post, "/v3/pay/transactions/h5", %{}, body) do
+      verify_resp(config, resp)
+    end
+  end
+
+  @spec query_transaction_by_out_trade_no(module(), binary()) :: ok_t(Typespecs.dict()) | err_t()
+  def query_transaction_by_out_trade_no(name, out_trade_no) do
+    config = get(name)
+
+    with {:ok, resp} <-
+           request(config, :get, "/v3/pay/transactions/out-trade-no/#{out_trade_no}", %{"mchid" => config[:mchid]}, nil) do
+      verify_resp(config, resp)
+    end
+  end
+
+  @spec query_transaction_by_transaction_id(module(), binary()) :: ok_t(Typespecs.dict()) | err_t()
+  def query_transaction_by_transaction_id(name, transaction_id) do
+    config = get(name)
+
+    with {:ok, resp} <-
+           request(config, :get, "/v3/pay/transactions/id/#{transaction_id}", %{"mchid" => config[:mchid]}, nil) do
+      verify_resp(config, resp)
+    end
+  end
+
+  @spec close_transaction(module(), binary()) :: :ok | err_t()
+  def close_transaction(name, out_trade_no) do
+    config = get(name)
+
+    {:ok, body} = Jason.encode(%{"mchid" => config[:mchid]})
+
+    with {:ok, resp} <- request(config, :post, "/v3/pay/transactions/out-trade-no/#{out_trade_no}/close", %{}, body),
+         {:ok, _} <- verify_resp(config, resp) do
+      :ok
+    end
+  end
+
+  @spec create_refund(module(), Typespecs.dict()) :: ok_t(Typespecs.dict()) | err_t()
+  def create_refund(name, args) do
+    config = get(name)
+
+    {:ok, body} = extend_args(config, args)
+
+    with {:ok, resp} <- request(config, :post, "/v3/refund/domestic/refunds", %{}, body) do
+      verify_resp(config, resp)
+    end
+  end
 end
