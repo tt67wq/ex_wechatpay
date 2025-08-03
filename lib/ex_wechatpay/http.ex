@@ -7,6 +7,10 @@ defprotocol ExWechatpay.Http do
   目前默认使用 Finch 作为 HTTP 客户端。
   """
 
+  alias ExWechatpay.Model.Http.Request
+  alias ExWechatpay.Model.Http.Response
+  alias ExWechatpay.Typespecs
+
   @doc """
   执行 HTTP 请求
 
@@ -20,8 +24,8 @@ defprotocol ExWechatpay.Http do
   """
   @spec do_request(
           http :: ExWechatpay.Http.t(),
-          req :: ExWechatpay.Model.Http.Request.t()
+          req :: Request.t()
         ) ::
-          {:ok, ExWechatpay.Model.Http.Response.t()} | {:error, ExWechatpay.Exception.t()}
+          Typespecs.result_t(Response.t())
   def do_request(http, req)
 end

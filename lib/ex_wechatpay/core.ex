@@ -18,9 +18,6 @@ defmodule ExWechatpay.Core do
   alias ExWechatpay.Service.Transaction
   alias ExWechatpay.Typespecs
 
-  @type ok_t(ret) :: {:ok, ret}
-  @type err_t() :: {:error, Exception.t()}
-
   @doc """
   启动核心模块并初始化配置
 
@@ -31,6 +28,7 @@ defmodule ExWechatpay.Core do
     * `{:ok, pid}` - 成功启动的 Agent 进程 ID
     * `{:error, reason}` - 启动失败的原因
   """
+  @spec start_link({Typespecs.name(), Typespecs.name(), keyword()}) :: Typespecs.on_start()
   def start_link({name, finch, config}) do
     # 使用 Provider 加载配置
     {:ok, processed_config} =
@@ -51,8 +49,9 @@ defmodule ExWechatpay.Core do
     * `name` - Agent 名称
 
   ## 返回值
-    * `ConfigOption.t()` - 当前配置
+    * `Typespecs.config_t()` - 当前配置
   """
+  @spec get(Typespecs.name()) :: Typespecs.config_t()
   def get(name) do
     Agent.get(name, & &1)
   end
@@ -65,9 +64,10 @@ defmodule ExWechatpay.Core do
     * `updates` - 配置更新
 
   ## 返回值
-    * `{:ok, ConfigOption.t()}` - 更新后的配置
+    * `{:ok, Typespecs.config_t()}` - 更新后的配置
     * `{:error, reason}` - 更新失败的原因
   """
+  @spec update_config(Typespecs.name(), keyword()) :: {:ok, Typespecs.config_t()} | {:error, term()}
   def update_config(name, updates) do
     Provider.update_config(name, updates)
   end
@@ -80,9 +80,9 @@ defmodule ExWechatpay.Core do
     * `prepay_id` - 预支付 ID
 
   ## 返回值
-    * `Typespecs.dict()` - 小程序支付表单
+    * `map()` - 小程序支付表单
   """
-  @spec miniapp_payform(module(), String.t()) :: Typespecs.dict()
+  @spec miniapp_payform(Typespecs.name(), String.t()) :: %{required(String.t()) => String.t()}
   def miniapp_payform(name, prepay_id) do
     config = get(name)
     RequestBuilder.build_miniapp_payform(config, prepay_id)
@@ -96,10 +96,10 @@ defmodule ExWechatpay.Core do
     * `verify` - 是否验证证书，默认为 true
 
   ## 返回值
-    * `{:ok, map()}` - 成功获取的证书信息
+    * `{:ok, [Typespecs.wx_cert()]}` - 成功获取的证书信息
     * `{:error, Exception.t()}` - 获取证书失败的错误信息
   """
-  @spec get_certificates(module(), boolean()) :: {:ok, Typespecs.dict()} | err_t()
+  @spec get_certificates(Typespecs.name(), boolean()) :: Typespecs.result_t([Typespecs.wx_cert()])
   def get_certificates(name, verify \\ true) do
     config = get(name)
     CertificateManager.get_certificates(config, config[:finch], verify)
@@ -116,7 +116,7 @@ defmodule ExWechatpay.Core do
   ## 返回值
     * `boolean()` - 验证结果，`true` 表示验证通过
   """
-  @spec verify(module(), Typespecs.headers(), Typespecs.body()) :: boolean()
+  @spec verify(Typespecs.name(), Typespecs.headers(), Typespecs.body()) :: boolean()
   def verify(name, headers, body) do
     name
     |> get()
@@ -134,7 +134,7 @@ defmodule ExWechatpay.Core do
     * `{:ok, binary()}` - 解密后的数据
     * `{:error, Exception.t()}` - 解密失败的错误信息
   """
-  @spec decrypt(module(), Typespecs.dict()) :: {:ok, binary()} | err_t()
+  @spec decrypt(Typespecs.name(), Typespecs.encrypted_resource()) :: Typespecs.result_t(binary())
   def decrypt(name, encrypted_form) do
     name
     |> get()
@@ -156,7 +156,8 @@ defmodule ExWechatpay.Core do
     * `{:ok, map()}` - 成功创建的交易信息
     * `{:error, Exception.t()}` - 创建交易失败的错误信息
   """
-  @spec create_native_transaction(module(), Typespecs.dict()) :: ok_t(Typespecs.dict()) | err_t()
+  @spec create_native_transaction(Typespecs.name(), Typespecs.native_transaction_req()) ::
+          Typespecs.result_t(Typespecs.native_transaction_resp())
   def create_native_transaction(name, args) do
     config = get(name)
     Transaction.create_native_transaction(config, config[:finch], args)
@@ -173,7 +174,8 @@ defmodule ExWechatpay.Core do
     * `{:ok, map()}` - 成功创建的交易信息
     * `{:error, Exception.t()}` - 创建交易失败的错误信息
   """
-  @spec create_jsapi_transaction(module(), Typespecs.dict()) :: ok_t(Typespecs.dict()) | err_t()
+  @spec create_jsapi_transaction(Typespecs.name(), Typespecs.jsapi_transaction_req()) ::
+          Typespecs.result_t(Typespecs.jsapi_transaction_resp())
   def create_jsapi_transaction(name, args) do
     config = get(name)
     Transaction.create_jsapi_transaction(config, config[:finch], args)
@@ -190,7 +192,8 @@ defmodule ExWechatpay.Core do
     * `{:ok, map()}` - 成功创建的交易信息
     * `{:error, Exception.t()}` - 创建交易失败的错误信息
   """
-  @spec create_h5_transaction(module(), Typespecs.dict()) :: ok_t(Typespecs.dict()) | err_t()
+  @spec create_h5_transaction(Typespecs.name(), Typespecs.h5_transaction_req()) ::
+          Typespecs.result_t(Typespecs.h5_transaction_resp())
   def create_h5_transaction(name, args) do
     config = get(name)
     Transaction.create_h5_transaction(config, config[:finch], args)
@@ -207,7 +210,8 @@ defmodule ExWechatpay.Core do
     * `{:ok, map()}` - 交易信息
     * `{:error, Exception.t()}` - 查询失败的错误信息
   """
-  @spec query_transaction_by_out_trade_no(module(), binary()) :: ok_t(Typespecs.dict()) | err_t()
+  @spec query_transaction_by_out_trade_no(Typespecs.name(), String.t()) ::
+          Typespecs.result_t(Typespecs.transaction_query_resp())
   def query_transaction_by_out_trade_no(name, out_trade_no) do
     config = get(name)
     Transaction.query_transaction_by_out_trade_no(config, config[:finch], out_trade_no)
@@ -224,7 +228,8 @@ defmodule ExWechatpay.Core do
     * `{:ok, map()}` - 交易信息
     * `{:error, Exception.t()}` - 查询失败的错误信息
   """
-  @spec query_transaction_by_transaction_id(module(), binary()) :: ok_t(Typespecs.dict()) | err_t()
+  @spec query_transaction_by_transaction_id(Typespecs.name(), String.t()) ::
+          Typespecs.result_t(Typespecs.transaction_query_resp())
   def query_transaction_by_transaction_id(name, transaction_id) do
     config = get(name)
     Transaction.query_transaction_by_transaction_id(config, config[:finch], transaction_id)
@@ -241,7 +246,7 @@ defmodule ExWechatpay.Core do
     * `:ok` - 关闭成功
     * `{:error, Exception.t()}` - 关闭失败的错误信息
   """
-  @spec close_transaction(module(), binary()) :: :ok | err_t()
+  @spec close_transaction(Typespecs.name(), String.t()) :: :ok | Typespecs.err_t()
   def close_transaction(name, out_trade_no) do
     config = get(name)
     Transaction.close_transaction(config, config[:finch], out_trade_no)
@@ -258,9 +263,47 @@ defmodule ExWechatpay.Core do
     * `{:ok, map()}` - 成功创建的退款信息
     * `{:error, Exception.t()}` - 创建退款失败的错误信息
   """
-  @spec create_refund(module(), Typespecs.dict()) :: ok_t(Typespecs.dict()) | err_t()
+  @spec create_refund(Typespecs.name(), Typespecs.refund_req()) ::
+          Typespecs.result_t(Typespecs.refund_resp())
   def create_refund(name, args) do
     config = get(name)
     Refund.create_refund(config, config[:finch], args)
+  end
+
+  @doc """
+  查询退款
+
+  ## 参数
+    * `name` - Agent 名称
+    * `out_refund_no` - 商户退款单号
+
+  ## 返回值
+    * `{:ok, map()}` - 退款信息
+    * `{:error, Exception.t()}` - 查询失败的错误信息
+  """
+  @spec query_refund(Typespecs.name(), String.t()) ::
+          Typespecs.result_t(Typespecs.refund_query_resp())
+  def query_refund(name, out_refund_no) do
+    config = get(name)
+    Refund.query_refund(config, config[:finch], out_refund_no)
+  end
+
+  @doc """
+  处理退款通知
+
+  ## 参数
+    * `name` - Agent 名称
+    * `headers` - 通知请求头
+    * `body` - 通知请求体
+
+  ## 返回值
+    * `{:ok, map()}` - 解析后的通知数据
+    * `{:error, Exception.t()}` - 处理失败的错误信息
+  """
+  @spec handle_refund_notification(Typespecs.name(), Typespecs.headers(), Typespecs.body()) ::
+          Typespecs.result_t(Typespecs.payment_notification())
+  def handle_refund_notification(name, headers, body) do
+    config = get(name)
+    Refund.handle_refund_notification(config, headers, body)
   end
 end

@@ -8,12 +8,8 @@ defmodule ExWechatpay.Service.Transaction do
 
   alias ExWechatpay.Core.RequestBuilder
   alias ExWechatpay.Core.ResponseHandler
-  alias ExWechatpay.Exception
   alias ExWechatpay.Model.ConfigOption
   alias ExWechatpay.Typespecs
-
-  @type ok_t(ret) :: {:ok, ret}
-  @type err_t() :: {:error, Exception.t()}
 
   @doc """
   创建 Native 支付交易
@@ -27,8 +23,12 @@ defmodule ExWechatpay.Service.Transaction do
     * `{:ok, map()}` - 成功创建的交易信息
     * `{:error, Exception.t()}` - 创建交易失败的错误信息
   """
-  @spec create_native_transaction(ConfigOption.t(), Typespecs.name(), Typespecs.dict()) ::
-          ok_t(Typespecs.dict()) | err_t()
+  @spec create_native_transaction(
+          ConfigOption.t(),
+          Typespecs.name(),
+          Typespecs.native_transaction_req()
+        ) ::
+          Typespecs.result_t(Typespecs.native_transaction_resp())
   def create_native_transaction(config, finch, args) do
     {:ok, body} = RequestBuilder.extend_args(config, args)
     request = RequestBuilder.build_request(config, :post, "/v3/pay/transactions/native", %{}, body)
@@ -50,8 +50,12 @@ defmodule ExWechatpay.Service.Transaction do
     * `{:ok, map()}` - 成功创建的交易信息
     * `{:error, Exception.t()}` - 创建交易失败的错误信息
   """
-  @spec create_jsapi_transaction(ConfigOption.t(), Typespecs.name(), Typespecs.dict()) ::
-          ok_t(Typespecs.dict()) | err_t()
+  @spec create_jsapi_transaction(
+          ConfigOption.t(),
+          Typespecs.name(),
+          Typespecs.jsapi_transaction_req()
+        ) ::
+          Typespecs.result_t(Typespecs.jsapi_transaction_resp())
   def create_jsapi_transaction(config, finch, args) do
     {:ok, body} = RequestBuilder.extend_args(config, args)
     request = RequestBuilder.build_request(config, :post, "/v3/pay/transactions/jsapi", %{}, body)
@@ -73,8 +77,12 @@ defmodule ExWechatpay.Service.Transaction do
     * `{:ok, map()}` - 成功创建的交易信息
     * `{:error, Exception.t()}` - 创建交易失败的错误信息
   """
-  @spec create_h5_transaction(ConfigOption.t(), Typespecs.name(), Typespecs.dict()) ::
-          ok_t(Typespecs.dict()) | err_t()
+  @spec create_h5_transaction(
+          ConfigOption.t(),
+          Typespecs.name(),
+          Typespecs.h5_transaction_req()
+        ) ::
+          Typespecs.result_t(Typespecs.h5_transaction_resp())
   def create_h5_transaction(config, finch, args) do
     {:ok, body} = RequestBuilder.extend_args(config, args)
     request = RequestBuilder.build_request(config, :post, "/v3/pay/transactions/h5", %{}, body)
@@ -96,8 +104,8 @@ defmodule ExWechatpay.Service.Transaction do
     * `{:ok, map()}` - 交易信息
     * `{:error, Exception.t()}` - 查询失败的错误信息
   """
-  @spec query_transaction_by_out_trade_no(ConfigOption.t(), Typespecs.name(), binary()) ::
-          ok_t(Typespecs.dict()) | err_t()
+  @spec query_transaction_by_out_trade_no(ConfigOption.t(), Typespecs.name(), String.t()) ::
+          Typespecs.result_t(Typespecs.transaction_query_resp())
   def query_transaction_by_out_trade_no(config, finch, out_trade_no) do
     request =
       RequestBuilder.build_request(
@@ -125,8 +133,8 @@ defmodule ExWechatpay.Service.Transaction do
     * `{:ok, map()}` - 交易信息
     * `{:error, Exception.t()}` - 查询失败的错误信息
   """
-  @spec query_transaction_by_transaction_id(ConfigOption.t(), Typespecs.name(), binary()) ::
-          ok_t(Typespecs.dict()) | err_t()
+  @spec query_transaction_by_transaction_id(ConfigOption.t(), Typespecs.name(), String.t()) ::
+          Typespecs.result_t(Typespecs.transaction_query_resp())
   def query_transaction_by_transaction_id(config, finch, transaction_id) do
     request =
       RequestBuilder.build_request(
@@ -154,7 +162,7 @@ defmodule ExWechatpay.Service.Transaction do
     * `:ok` - 关闭成功
     * `{:error, Exception.t()}` - 关闭失败的错误信息
   """
-  @spec close_transaction(ConfigOption.t(), Typespecs.name(), binary()) :: :ok | err_t()
+  @spec close_transaction(ConfigOption.t(), Typespecs.name(), String.t()) :: :ok | Typespecs.err_t()
   def close_transaction(config, finch, out_trade_no) do
     {:ok, body} = Jason.encode(%{"mchid" => config[:mchid]})
 

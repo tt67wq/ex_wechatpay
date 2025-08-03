@@ -8,12 +8,8 @@ defmodule ExWechatpay.Core.ResponseHandler do
 
   alias ExWechatpay.Core.SignatureManager
   alias ExWechatpay.Exception
-  alias ExWechatpay.Model.ConfigOption
   alias ExWechatpay.Model.Http
   alias ExWechatpay.Typespecs
-
-  @type ok_t(ret) :: {:ok, ret}
-  @type err_t() :: {:error, Exception.t()}
 
   @doc """
   验证并处理 HTTP 响应
@@ -26,7 +22,7 @@ defmodule ExWechatpay.Core.ResponseHandler do
     * `{:ok, map()}` - 验证通过的响应数据
     * `{:error, Exception.t()}` - 验证失败的错误信息
   """
-  @spec verify_and_parse_response(ConfigOption.t(), Http.Response.t()) :: ok_t(Typespecs.dict()) | err_t()
+  @spec verify_and_parse_response(Typespecs.config_t(), Typespecs.http_response()) :: Typespecs.result_t(map())
   def verify_and_parse_response(config, resp) do
     %Http.Response{headers: headers, body: body} = resp
 
@@ -54,7 +50,7 @@ defmodule ExWechatpay.Core.ResponseHandler do
   ## 返回值
     * `binary() | :error` - 解密后的数据或错误
   """
-  @spec decrypt(ConfigOption.t(), Typespecs.dict(), non_neg_integer()) :: binary() | :error
+  @spec decrypt(Typespecs.config_t(), Typespecs.encrypted_resource(), non_neg_integer()) :: binary() | :error
   def decrypt(
         config,
         %{
@@ -92,7 +88,7 @@ defmodule ExWechatpay.Core.ResponseHandler do
   ## 返回值
     * `[map()]` - 解密后的证书数据列表
   """
-  @spec decrypt_certificates([map()], ConfigOption.t()) :: [map()]
+  @spec decrypt_certificates([map()], Typespecs.config_t()) :: [Typespecs.wx_cert()]
   def decrypt_certificates(certificates, config) do
     Enum.map(certificates, fn %{"encrypt_certificate" => encrypt_certificate} = x ->
       Map.put(x, "certificate", decrypt(config, encrypt_certificate))

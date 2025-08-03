@@ -13,9 +13,6 @@ defmodule ExWechatpay.Service.Refund do
   alias ExWechatpay.Model.ConfigOption
   alias ExWechatpay.Typespecs
 
-  @type ok_t(ret) :: {:ok, ret}
-  @type err_t() :: {:error, Exception.t()}
-
   @doc """
   创建退款
 
@@ -31,8 +28,12 @@ defmodule ExWechatpay.Service.Refund do
     * `{:ok, map()}` - 成功创建的退款信息
     * `{:error, Exception.t()}` - 创建退款失败的错误信息
   """
-  @spec create_refund(ConfigOption.t(), Typespecs.name(), Typespecs.dict()) ::
-          ok_t(Typespecs.dict()) | err_t()
+  @spec create_refund(
+          ConfigOption.t(),
+          Typespecs.name(),
+          Typespecs.refund_req()
+        ) ::
+          Typespecs.result_t(Typespecs.refund_resp())
   def create_refund(config, finch, args) do
     {:ok, body} = RequestBuilder.extend_args(config, args)
     request = RequestBuilder.build_request(config, :post, "/v3/refund/domestic/refunds", %{}, body)
@@ -54,8 +55,8 @@ defmodule ExWechatpay.Service.Refund do
     * `{:ok, map()}` - 退款信息
     * `{:error, Exception.t()}` - 查询失败的错误信息
   """
-  @spec query_refund(ConfigOption.t(), Typespecs.name(), binary()) ::
-          ok_t(Typespecs.dict()) | err_t()
+  @spec query_refund(ConfigOption.t(), Typespecs.name(), String.t()) ::
+          Typespecs.result_t(Typespecs.refund_query_resp())
   def query_refund(config, finch, out_refund_no) do
     request =
       RequestBuilder.build_request(
@@ -83,8 +84,12 @@ defmodule ExWechatpay.Service.Refund do
     * `{:ok, map()}` - 解析后的回调数据
     * `{:error, Exception.t()}` - 处理失败的错误信息
   """
-  @spec handle_refund_notification(ConfigOption.t(), Typespecs.headers(), Typespecs.body()) ::
-          ok_t(Typespecs.dict()) | err_t()
+  @spec handle_refund_notification(
+          ConfigOption.t(),
+          Typespecs.headers(),
+          Typespecs.body()
+        ) ::
+          Typespecs.result_t(Typespecs.payment_notification())
   def handle_refund_notification(config, headers, body) do
     with true <- SignatureManager.verify_signature(config, headers, body),
          {:ok, decoded} <- Jason.decode(body),

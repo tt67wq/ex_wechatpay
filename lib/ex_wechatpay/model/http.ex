@@ -1,8 +1,16 @@
 defmodule ExWechatpay.Model.Http do
-  @moduledoc false
+  @moduledoc """
+  HTTP 模型模块
+
+  该模块定义了 HTTP 请求和响应的数据结构，用于规范化 HTTP 交互。
+  通过明确的数据结构定义，提高了代码的可读性和类型安全性。
+  """
+
   defmodule Request do
     @moduledoc """
-    http request
+    HTTP 请求结构
+
+    定义了 HTTP 请求的各个组成部分，包括请求方法、URL、请求头和请求体等。
     """
     alias ExWechatpay.Typespecs
 
@@ -13,7 +21,7 @@ defmodule ExWechatpay.Model.Http do
             host: String.t(),
             port: non_neg_integer(),
             method: Typespecs.method(),
-            path: binary(),
+            path: String.t(),
             headers: Typespecs.headers(),
             body: Typespecs.body(),
             params: Typespecs.params(),
@@ -22,6 +30,15 @@ defmodule ExWechatpay.Model.Http do
 
     defstruct scheme: "https", host: "", port: 443, method: :get, path: "", headers: [], body: nil, params: %{}, opts: []
 
+    @doc """
+    生成完整的请求 URL
+
+    ## 参数
+      * `request` - HTTP 请求结构
+
+    ## 返回值
+      * `URI.t()` - 完整的请求 URI
+    """
     @spec url(t()) :: URI.t()
     def url(%__MODULE__{scheme: scheme, host: host, port: port, path: path, params: params}) do
       query =
@@ -43,13 +60,15 @@ defmodule ExWechatpay.Model.Http do
 
   defmodule Response do
     @moduledoc """
-    http response
+    HTTP 响应结构
+
+    定义了 HTTP 响应的各个组成部分，包括状态码、响应头和响应体等。
     """
 
     alias ExWechatpay.Typespecs
 
     @type t :: %__MODULE__{
-            status_code: non_neg_integer(),
+            status_code: Typespecs.http_status(),
             headers: Typespecs.headers(),
             body: Typespecs.body()
           }

@@ -7,7 +7,6 @@ defmodule ExWechatpay.Core.RequestBuilder do
   """
 
   alias ExWechatpay.Core.SignatureManager
-  alias ExWechatpay.Model.ConfigOption
   alias ExWechatpay.Model.Http
   alias ExWechatpay.Typespecs
 
@@ -26,7 +25,7 @@ defmodule ExWechatpay.Core.RequestBuilder do
     * `Http.Request.t()` - HTTP 请求结构
   """
   @spec build_request(
-          ConfigOption.t(),
+          Typespecs.config_t(),
           Typespecs.method(),
           Typespecs.api(),
           Typespecs.params(),
@@ -66,7 +65,7 @@ defmodule ExWechatpay.Core.RequestBuilder do
   ## 返回值
     * `{:ok, binary()}` - 编码后的 JSON 字符串
   """
-  @spec extend_args(ConfigOption.t(), Typespecs.dict()) :: {:ok, binary()}
+  @spec extend_args(Typespecs.config_t(), map()) :: {:ok, binary()}
   def extend_args(config, args) do
     args
     |> Map.put_new("appid", config[:appid])
@@ -83,9 +82,11 @@ defmodule ExWechatpay.Core.RequestBuilder do
     * `prepay_id` - 预支付 ID
 
   ## 返回值
-    * `Typespecs.dict()` - 小程序支付表单
+    * `map()` - 小程序支付表单
   """
-  @spec build_miniapp_payform(ConfigOption.t(), String.t()) :: Typespecs.dict()
+  @spec build_miniapp_payform(Typespecs.config_t(), String.t()) :: %{
+          required(String.t()) => String.t()
+        }
   def build_miniapp_payform(config, prepay_id) do
     alias ExWechatpay.Util
 
@@ -95,7 +96,7 @@ defmodule ExWechatpay.Core.RequestBuilder do
     signature = SignatureManager.sign_miniapp(config, ts, nonce, package)
 
     %{
-      "appid" => config[:appid],
+      "appId" => config[:appid],
       "timeStamp" => ts,
       "nonceStr" => nonce,
       "package" => package,
