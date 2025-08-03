@@ -39,6 +39,66 @@ defmodule ExWechatpay do
         ExWechatpay.Supervisor.start_link(__MODULE__, cfg)
       end
 
+      @doc """
+      获取当前配置
+
+      ## 返回值
+         * 当前配置
+      """
+      def get_config do
+        ExWechatpay.Config.Helper.get_config(__MODULE__)
+      end
+
+      @doc """
+      更新配置
+
+      ## 参数
+         * `updates` - 要更新的配置
+
+      ## 返回值
+         * `{:ok, new_config}` - 更新后的配置
+         * `{:error, error}` - 更新失败的错误信息
+      """
+      def update_config(updates) do
+        ExWechatpay.Config.Helper.update_config(__MODULE__, updates)
+      end
+
+      @doc """
+      更新证书
+
+      从微信支付服务器获取最新的平台证书并更新配置。
+
+      ## 返回值
+         * `{:ok, new_config}` - 更新后的配置
+         * `{:error, error}` - 更新失败的错误信息
+      """
+      def update_certificates do
+        ExWechatpay.Config.Helper.update_certificates(__MODULE__)
+      end
+
+      @doc """
+      启用自动更新证书
+
+      ## 参数
+         * `interval` - 更新间隔（毫秒，默认：1天）
+
+      ## 返回值
+         * `:ok` - 成功启用
+      """
+      def enable_auto_update_certificates(interval \\ 60_000 * 60 * 24) do
+        ExWechatpay.Config.Helper.enable_auto_update_certificates(__MODULE__, interval)
+      end
+
+      @doc """
+      禁用自动更新证书
+
+      ## 返回值
+         * `:ok` - 成功禁用
+      """
+      def disable_auto_update_certificates do
+        ExWechatpay.Config.Helper.disable_auto_update_certificates(__MODULE__)
+      end
+
       defp delegate(method, args), do: apply(Core, method, [__MODULE__ | args])
 
       @doc """

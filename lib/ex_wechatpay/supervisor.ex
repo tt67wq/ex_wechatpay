@@ -13,6 +13,7 @@ defmodule ExWechatpay.Supervisor do
     children =
       [
         {Finch, name: finch_name(name)},
+        {ExWechatpay.Config.Manager, {name, config, []}},
         {ExWechatpay.Core, {name, %ExWechatpay.Http.Finch{finch_name: finch_name(name)}, config}}
       ]
 

@@ -8,16 +8,15 @@ defmodule ExWechatpay.Core do
 
   use Agent
 
+  alias ExWechatpay.Config.Provider
   alias ExWechatpay.Core.CertificateManager
   alias ExWechatpay.Core.RequestBuilder
   alias ExWechatpay.Core.ResponseHandler
   alias ExWechatpay.Core.SignatureManager
   alias ExWechatpay.Exception
-  alias ExWechatpay.Model.ConfigOption
   alias ExWechatpay.Service.Refund
   alias ExWechatpay.Service.Transaction
   alias ExWechatpay.Typespecs
-  alias ExWechatpay.Util
 
   @type ok_t(ret) :: {:ok, ret}
   @type err_t() :: {:error, Exception.t()}
@@ -33,17 +32,16 @@ defmodule ExWechatpay.Core do
     * `{:error, reason}` - 启动失败的原因
   """
   def start_link({name, finch, config}) do
-    config =
+    # 使用 Provider 加载配置
+    {:ok, processed_config} =
       config
-      |> ConfigOption.validate!()
-      |> Keyword.replace_lazy(:client_key, &Util.load_pem(&1))
-      |> Keyword.replace_lazy(:client_cert, &Util.load_pem(&1))
-      |> Keyword.replace_lazy(:wx_pubs, fn pairs ->
-        Enum.map(pairs, fn {k, v} -> {k, Util.load_pem(v)} end)
-      end)
-      |> Keyword.put(:finch, finch)
+      |> Provider.load()
+      |> case do
+        {:ok, cfg} -> {:ok, Keyword.put(cfg, :finch, finch)}
+        error -> error
+      end
 
-    Agent.start_link(fn -> config end, name: name)
+    Agent.start_link(fn -> processed_config end, name: name)
   end
 
   @doc """
@@ -57,6 +55,21 @@ defmodule ExWechatpay.Core do
   """
   def get(name) do
     Agent.get(name, & &1)
+  end
+
+  @doc """
+  更新配置
+
+  ## 参数
+    * `name` - Agent 名称
+    * `updates` - 配置更新
+
+  ## 返回值
+    * `{:ok, ConfigOption.t()}` - 更新后的配置
+    * `{:error, reason}` - 更新失败的原因
+  """
+  def update_config(name, updates) do
+    Provider.update_config(name, updates)
   end
 
   @doc """
