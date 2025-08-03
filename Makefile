@@ -13,7 +13,7 @@ setup: ## 初始化开发环境
 	@mix do deps.get, compile
 
 build: ## 编译项目
-	@mix compile --warning-as-error
+	@mix compile --warnings-as-errors
 
 ## 代码质量
 lint: ## 静态代码检查

@@ -6,8 +6,6 @@ defmodule ExWechatpay.Http.Finch do
   Finch 是一个高性能的 HTTP 客户端，适合用于高并发场景。
   """
 
-  alias ExWechatpay.Typespecs
-
   @typedoc """
   Finch HTTP 客户端配置。
 

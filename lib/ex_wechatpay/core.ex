@@ -1,19 +1,37 @@
 defmodule ExWechatpay.Core do
-  @moduledoc false
+  @moduledoc """
+  微信支付核心模块
+
+  该模块是 ExWechatpay 的核心组件，负责初始化配置和委托各种功能到专门的模块。
+  通过模块职责分离，提高了代码的可维护性和可扩展性。
+  """
 
   use Agent
 
+  alias ExWechatpay.Core.CertificateManager
+  alias ExWechatpay.Core.RequestBuilder
+  alias ExWechatpay.Core.ResponseHandler
+  alias ExWechatpay.Core.SignatureManager
   alias ExWechatpay.Exception
   alias ExWechatpay.Model.ConfigOption
-  alias ExWechatpay.Model.Http
+  alias ExWechatpay.Service.Refund
+  alias ExWechatpay.Service.Transaction
   alias ExWechatpay.Typespecs
   alias ExWechatpay.Util
 
   @type ok_t(ret) :: {:ok, ret}
   @type err_t() :: {:error, Exception.t()}
 
-  @tag_length 16
+  @doc """
+  启动核心模块并初始化配置
 
+  ## 参数
+    * `{name, finch, config}` - 包含名称、Finch 实例和配置的元组
+
+  ## 返回值
+    * `{:ok, pid}` - 成功启动的 Agent 进程 ID
+    * `{:error, reason}` - 启动失败的原因
+  """
   def start_link({name, finch, config}) do
     config =
       config
@@ -28,245 +46,208 @@ defmodule ExWechatpay.Core do
     Agent.start_link(fn -> config end, name: name)
   end
 
+  @doc """
+  获取当前配置
+
+  ## 参数
+    * `name` - Agent 名称
+
+  ## 返回值
+    * `ConfigOption.t()` - 当前配置
+  """
   def get(name) do
     Agent.get(name, & &1)
   end
 
-  @spec request(
-          ConfigOption.t(),
-          Typespecs.method(),
-          Typespecs.api(),
-          Typespecs.params(),
-          Typespecs.body(),
-          Keyword.t()
-        ) ::
-          {:ok, Http.Response.t()} | {:error, Exception.t()}
-  defp request(config, method, api, params, body, opts \\ []) do
-    auth = ExWechatpay.Authorization.generate(config, method, api, params, body)
+  @doc """
+  生成小程序支付表单
 
-    headers = [
-      {"Content-Type", "application/json"},
-      {"Accept", "application/json"},
-      {"Authorization", auth}
-    ]
+  ## 参数
+    * `name` - Agent 名称
+    * `prepay_id` - 预支付 ID
 
-    ExWechatpay.Http.do_request(config[:finch], %Http.Request{
-      host: config[:service_host],
-      method: method,
-      path: api,
-      headers: headers,
-      body: body,
-      params: params,
-      opts: opts
-    })
-  end
-
-  @spec do_verify(ConfigOption.t(), Typespecs.headers(), Typespecs.body()) :: boolean()
-  defp do_verify(config, headers, body) do
-    headers = Map.new(headers, fn {k, v} -> {String.downcase(k), v} end)
-
-    with {_, wx_pub} <-
-           Enum.find(config[:wx_pubs], fn {x, _} -> x == headers["wechatpay-serial"] end),
-         ts = headers["wechatpay-timestamp"],
-         nonce = headers["wechatpay-nonce"],
-         string_to_sign = "#{ts}\n#{nonce}\n#{body}\n",
-         encoded_wx_signature = headers["wechatpay-signature"],
-         {:ok, wx_signature} <- Base.decode64(encoded_wx_signature) do
-      :public_key.verify(string_to_sign, :sha256, wx_signature, wx_pub)
-    end
-  end
-
+  ## 返回值
+    * `Typespecs.dict()` - 小程序支付表单
+  """
   @spec miniapp_payform(module(), String.t()) :: Typespecs.dict()
   def miniapp_payform(name, prepay_id) do
     config = get(name)
-    ts = Util.timestamp()
-    nonce = Util.random_string(12)
-    package = "prepay_id=#{prepay_id}"
-    signature = sign_miniapp(config, ts, nonce, package)
-
-    %{
-      "appid" => config[:appid],
-      "timeStamp" => ts,
-      "nonceStr" => nonce,
-      "package" => package,
-      "signType" => "RSA",
-      "paySign" => signature
-    }
+    RequestBuilder.build_miniapp_payform(config, prepay_id)
   end
 
-  defp sign_miniapp(config, ts, nonce, package) do
-    string_to_sign = "#{config[:appid]}\n#{ts}\n#{nonce}\n#{package}\n"
+  @doc """
+  获取微信支付平台证书
 
-    string_to_sign
-    |> :public_key.sign(:sha256, config[:client_key])
-    |> Base.encode64()
-  end
+  ## 参数
+    * `name` - Agent 名称
+    * `verify` - 是否验证证书，默认为 true
 
-  # https://pay.weixin.qq.com/wiki/doc/apiv3/wechatpay/wechatpay4_2.shtml
-  @spec do_decrypt(ConfigOption.t(), Typespecs.dict()) :: binary() | :error
-  defp do_decrypt(config, %{
-         "algorithm" => "AEAD_AES_256_GCM",
-         "associated_data" => aad,
-         "ciphertext" => encoded_ciphertext,
-         "nonce" => nonce
-       }) do
-    with {:ok, ciphertext} <- Base.decode64(encoded_ciphertext) do
-      size_total = byte_size(ciphertext)
-      ctext_len = size_total - @tag_length
-      <<ctext::binary-size(ctext_len), tag::binary-size(@tag_length)>> = ciphertext
-
-      :crypto.crypto_one_time_aead(
-        :aes_256_gcm,
-        config[:apiv3_key],
-        nonce,
-        ctext,
-        aad,
-        tag,
-        false
-      )
-    end
-  end
-
+  ## 返回值
+    * `{:ok, map()}` - 成功获取的证书信息
+    * `{:error, Exception.t()}` - 获取证书失败的错误信息
+  """
   @spec get_certificates(module(), boolean()) :: {:ok, Typespecs.dict()} | err_t()
   def get_certificates(name, verify \\ true) do
     config = get(name)
-
-    with {:ok, %Http.Response{body: body, headers: headers}} <- request(config, :get, "/v3/certificates", %{}, nil) do
-      if verify do
-        config
-        |> do_verify(headers, body)
-        |> if do
-          {:ok, %{"data" => data}} =
-            Jason.decode(body)
-
-          {:ok, %{"data" => decrypt_certificates(data, config)}}
-        else
-          {:error, Exception.new("verify_failed", %{"headers" => headers, "body" => body})}
-        end
-      end
-    end
+    CertificateManager.get_certificates(config, config[:finch], verify)
   end
 
-  defp decrypt_certificates(certificates, config) do
-    Enum.map(certificates, fn %{"encrypt_certificate" => encrypt_certificate} = x ->
-      Map.put(x, "certificate", do_decrypt(config, encrypt_certificate))
-    end)
-  end
+  @doc """
+  验证微信支付回调或响应签名
 
+  ## 参数
+    * `name` - Agent 名称
+    * `headers` - HTTP 响应头
+    * `body` - HTTP 响应体
+
+  ## 返回值
+    * `boolean()` - 验证结果，`true` 表示验证通过
+  """
   @spec verify(module(), Typespecs.headers(), Typespecs.body()) :: boolean()
   def verify(name, headers, body) do
     name
     |> get()
-    |> do_verify(headers, body)
+    |> SignatureManager.verify_signature(headers, body)
   end
 
+  @doc """
+  解密微信支付加密数据
+
+  ## 参数
+    * `name` - Agent 名称
+    * `encrypted_form` - 加密数据
+
+  ## 返回值
+    * `{:ok, binary()}` - 解密后的数据
+    * `{:error, Exception.t()}` - 解密失败的错误信息
+  """
   @spec decrypt(module(), Typespecs.dict()) :: {:ok, binary()} | err_t()
   def decrypt(name, encrypted_form) do
     name
     |> get()
-    |> do_decrypt(encrypted_form)
+    |> ResponseHandler.decrypt(encrypted_form)
     |> case do
       :error -> {:error, Exception.new("decrypt_failed", %{"encrypted_form" => encrypted_form})}
       ret -> {:ok, ret}
     end
   end
 
-  @spec extend_args(ConfigOption.t(), Typespecs.dict()) :: {:ok, binary()}
-  defp extend_args(config, args) do
-    args
-    |> Map.put_new("appid", config[:appid])
-    |> Map.put_new("mchid", config[:mchid])
-    |> Map.put_new("notify_url", config[:notify_url])
-    |> Jason.encode()
-  end
+  @doc """
+  创建 Native 支付交易
 
-  @spec verify_resp(ConfigOption.t(), Http.Response.t()) :: ok_t(Typespecs.dict()) | err_t()
-  defp verify_resp(config, resp) do
-    %Http.Response{headers: headers, body: body} = resp
+  ## 参数
+    * `name` - Agent 名称
+    * `args` - 交易参数
 
-    config
-    |> do_verify(headers, body)
-    |> if do
-      case body do
-        "" -> {:ok, %{}}
-        nil -> {:ok, %{}}
-        _ -> Jason.decode(body)
-      end
-    else
-      {:error, Exception.new("wechatpay verify failed", %{"headers" => headers, "body" => body})}
-    end
-  end
-
+  ## 返回值
+    * `{:ok, map()}` - 成功创建的交易信息
+    * `{:error, Exception.t()}` - 创建交易失败的错误信息
+  """
   @spec create_native_transaction(module(), Typespecs.dict()) :: ok_t(Typespecs.dict()) | err_t()
   def create_native_transaction(name, args) do
     config = get(name)
-    {:ok, body} = extend_args(config, args)
-
-    with {:ok, resp} <- request(config, :post, "/v3/pay/transactions/native", %{}, body) do
-      verify_resp(config, resp)
-    end
+    Transaction.create_native_transaction(config, config[:finch], args)
   end
 
+  @doc """
+  创建 JSAPI 支付交易
+
+  ## 参数
+    * `name` - Agent 名称
+    * `args` - 交易参数
+
+  ## 返回值
+    * `{:ok, map()}` - 成功创建的交易信息
+    * `{:error, Exception.t()}` - 创建交易失败的错误信息
+  """
   @spec create_jsapi_transaction(module(), Typespecs.dict()) :: ok_t(Typespecs.dict()) | err_t()
   def create_jsapi_transaction(name, args) do
     config = get(name)
-    {:ok, body} = extend_args(config, args)
-
-    with {:ok, resp} <- request(config, :post, "/v3/pay/transactions/jsapi", %{}, body) do
-      verify_resp(config, resp)
-    end
+    Transaction.create_jsapi_transaction(config, config[:finch], args)
   end
 
+  @doc """
+  创建 H5 支付交易
+
+  ## 参数
+    * `name` - Agent 名称
+    * `args` - 交易参数
+
+  ## 返回值
+    * `{:ok, map()}` - 成功创建的交易信息
+    * `{:error, Exception.t()}` - 创建交易失败的错误信息
+  """
   @spec create_h5_transaction(module(), Typespecs.dict()) :: ok_t(Typespecs.dict()) | err_t()
   def create_h5_transaction(name, args) do
     config = get(name)
-    {:ok, body} = extend_args(config, args)
-
-    with {:ok, resp} <- request(config, :post, "/v3/pay/transactions/h5", %{}, body) do
-      verify_resp(config, resp)
-    end
+    Transaction.create_h5_transaction(config, config[:finch], args)
   end
 
+  @doc """
+  通过商户订单号查询交易
+
+  ## 参数
+    * `name` - Agent 名称
+    * `out_trade_no` - 商户订单号
+
+  ## 返回值
+    * `{:ok, map()}` - 交易信息
+    * `{:error, Exception.t()}` - 查询失败的错误信息
+  """
   @spec query_transaction_by_out_trade_no(module(), binary()) :: ok_t(Typespecs.dict()) | err_t()
   def query_transaction_by_out_trade_no(name, out_trade_no) do
     config = get(name)
-
-    with {:ok, resp} <-
-           request(config, :get, "/v3/pay/transactions/out-trade-no/#{out_trade_no}", %{"mchid" => config[:mchid]}, nil) do
-      verify_resp(config, resp)
-    end
+    Transaction.query_transaction_by_out_trade_no(config, config[:finch], out_trade_no)
   end
 
+  @doc """
+  通过微信支付订单号查询交易
+
+  ## 参数
+    * `name` - Agent 名称
+    * `transaction_id` - 微信支付订单号
+
+  ## 返回值
+    * `{:ok, map()}` - 交易信息
+    * `{:error, Exception.t()}` - 查询失败的错误信息
+  """
   @spec query_transaction_by_transaction_id(module(), binary()) :: ok_t(Typespecs.dict()) | err_t()
   def query_transaction_by_transaction_id(name, transaction_id) do
     config = get(name)
-
-    with {:ok, resp} <-
-           request(config, :get, "/v3/pay/transactions/id/#{transaction_id}", %{"mchid" => config[:mchid]}, nil) do
-      verify_resp(config, resp)
-    end
+    Transaction.query_transaction_by_transaction_id(config, config[:finch], transaction_id)
   end
 
+  @doc """
+  关闭交易
+
+  ## 参数
+    * `name` - Agent 名称
+    * `out_trade_no` - 商户订单号
+
+  ## 返回值
+    * `:ok` - 关闭成功
+    * `{:error, Exception.t()}` - 关闭失败的错误信息
+  """
   @spec close_transaction(module(), binary()) :: :ok | err_t()
   def close_transaction(name, out_trade_no) do
     config = get(name)
-
-    {:ok, body} = Jason.encode(%{"mchid" => config[:mchid]})
-
-    with {:ok, resp} <- request(config, :post, "/v3/pay/transactions/out-trade-no/#{out_trade_no}/close", %{}, body),
-         {:ok, _} <- verify_resp(config, resp) do
-      :ok
-    end
+    Transaction.close_transaction(config, config[:finch], out_trade_no)
   end
 
+  @doc """
+  创建退款
+
+  ## 参数
+    * `name` - Agent 名称
+    * `args` - 退款参数
+
+  ## 返回值
+    * `{:ok, map()}` - 成功创建的退款信息
+    * `{:error, Exception.t()}` - 创建退款失败的错误信息
+  """
   @spec create_refund(module(), Typespecs.dict()) :: ok_t(Typespecs.dict()) | err_t()
   def create_refund(name, args) do
     config = get(name)
-
-    {:ok, body} = extend_args(config, args)
-
-    with {:ok, resp} <- request(config, :post, "/v3/refund/domestic/refunds", %{}, body) do
-      verify_resp(config, resp)
-    end
+    Refund.create_refund(config, config[:finch], args)
   end
 end
