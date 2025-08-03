@@ -12,10 +12,9 @@ defmodule ExWechatpay.Core do
   @type ok_t(ret) :: {:ok, ret}
   @type err_t() :: {:error, Exception.t()}
 
-  @http_impl ExWechatpay.Http.Finch
   @tag_length 16
 
-  def start_link({name, http_name, config}) do
+  def start_link({name, finch, config}) do
     config =
       config
       |> ConfigOption.validate!()
@@ -24,17 +23,13 @@ defmodule ExWechatpay.Core do
       |> Keyword.replace_lazy(:wx_pubs, fn pairs ->
         Enum.map(pairs, fn {k, v} -> {k, Util.load_pem(v)} end)
       end)
-      |> Keyword.put(:http_name, http_name)
+      |> Keyword.put(:finch, finch)
 
     Agent.start_link(fn -> config end, name: name)
   end
 
   def get(name) do
     Agent.get(name, & &1)
-  end
-
-  defp call_http(name, req) do
-    apply(@http_impl, :do_request, [name, req])
   end
 
   @spec request(
@@ -55,7 +50,7 @@ defmodule ExWechatpay.Core do
       {"Authorization", auth}
     ]
 
-    call_http(config[:http_name], %Http.Request{
+    ExWechatpay.Http.do_request(config[:finch], %Http.Request{
       host: config[:service_host],
       method: method,
       path: api,
