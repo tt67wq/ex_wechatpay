@@ -45,8 +45,8 @@ deps.update.all: ## 更新所有依赖
 deps.clean: ## 清理未使用的依赖
 	@mix deps.clean --unused
 
-deps.compile: ## 编译项目依赖
-	@mix deps.compile
-
 deps.tree: ## 显示依赖树状结构
 	@mix deps.tree
+
+publish: ## 发布项目到 Hex
+	@mix hex.publish --yes
