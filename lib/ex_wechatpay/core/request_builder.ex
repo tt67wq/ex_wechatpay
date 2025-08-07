@@ -68,9 +68,9 @@ defmodule ExWechatpay.Core.RequestBuilder do
   @spec extend_args(Typespecs.config_t(), map()) :: {:ok, binary()}
   def extend_args(config, args) do
     args
-    |> Map.put_new("appid", config[:appid])
-    |> Map.put_new("mchid", config[:mchid])
-    |> Map.put_new("notify_url", config[:notify_url])
+    |> Map.put_new(:appid, config[:appid])
+    |> Map.put_new(:mchid, config[:mchid])
+    |> Map.put_new(:notify_url, config[:notify_url])
     |> Jason.encode()
   end
 

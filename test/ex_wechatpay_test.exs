@@ -33,16 +33,15 @@ defmodule ExWechatpayTest do
     ExWechatpay.Debug.debug(res)
   end
 
-  # @tag exec: true
   test "create_native_transaction" do
     assert {:ok, res} =
              App.create_native_transaction(%{
-               "description" => "Image形象店-深圳腾大-QQ公仔",
-               "out_trade_no" => Util.random_string(12),
-               "notify_url" => "https://www.weixin.qq.com/wxpay/pay.php",
-               "amount" => %{
-                 "total" => 1,
-                 "currency" => "CNY"
+               :description => "Image形象店-深圳腾大-QQ公仔",
+               :out_trade_no => Util.random_string(12),
+               :notify_url => "https://www.weixin.qq.com/wxpay/pay.php",
+               :amount => %{
+                 :total => 1,
+                 :currency => "CNY"
                }
              })
 
@@ -53,15 +52,15 @@ defmodule ExWechatpayTest do
   test "create_jsapi_transaction" do
     assert {:ok, res} =
              App.create_jsapi_transaction(%{
-               "description" => "Image形象店-深圳腾大-QQ公仔",
-               "out_trade_no" => Util.random_string(12),
-               "notify_url" => "https://www.weixin.qq.com/wxpay/pay.php",
-               "amount" => %{
-                 "total" => 1,
-                 "currency" => "CNY"
+               :description => "Image形象店-深圳腾大-QQ公仔",
+               :out_trade_no => Util.random_string(12),
+               :notify_url => "https://www.weixin.qq.com/wxpay/pay.php",
+               :amount => %{
+                 :total => 1,
+                 :currency => "CNY"
                },
-               "payer" => %{
-                 "openid" => "ohNY75Bxh362oNB0Zu5aF_-hAHP4"
+               :payer => %{
+                 :openid => "ohNY75Bxh362oNB0Zu5aF_-hAHP4"
                }
              })
 
@@ -85,12 +84,13 @@ defmodule ExWechatpayTest do
     out_trade_no = Util.random_string(12)
 
     App.create_native_transaction(%{
-      "description" => "Image形象店-深圳腾大-QQ公仔",
-      "out_trade_no" => out_trade_no,
-      "notify_url" => "https://www.weixin.qq.com/wxpay/pay.php",
-      "amount" => %{
-        "total" => 1,
-        "currency" => "CNY"
+      :description => "Image形象店-深圳腾大-QQ公仔",
+      :out_trade_no => out_trade_no,
+      :out_trade_no => out_trade_no,
+      :notify_url => "https://www.weixin.qq.com/wxpay/pay.php",
+      :amount => %{
+        :total => 1,
+        :currency => "CNY"
       }
     })
 
