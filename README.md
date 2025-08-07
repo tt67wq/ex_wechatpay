@@ -14,7 +14,7 @@
 ```elixir
 def deps do
   [
-    {:ex_wechatpay, "~> 0.2"}
+    {:ex_wechatpay, "~> 0.3"}
   ]
 end
 ```
@@ -83,7 +83,7 @@ def start(_type, _args) do
     # 其他子进程
     MyWechat
   ]
-  
+
   opts = [strategy: :one_for_one, name: MyApp.Supervisor]
   Supervisor.start_link(children, opts)
 end
@@ -224,19 +224,19 @@ is_valid = MyWechat.verify(headers, body)
 ```elixir
 defmodule MyAppWeb.WechatPayController do
   use MyAppWeb, :controller
-  
+
   def payment_notify(conn, _params) do
     {:ok, body, conn} = read_body(conn)
     headers = Enum.map(conn.req_headers, fn {k, v} -> {k, v} end)
-    
+
     # 验证签名
     if MyWechat.verify(headers, body) do
       # 解析通知数据
       {:ok, decoded} = Jason.decode(body)
-      
+
       # 处理通知（根据业务逻辑）
       process_payment_notification(decoded)
-      
+
       # 返回成功响应
       conn
       |> put_resp_content_type("application/json")
@@ -248,22 +248,22 @@ defmodule MyAppWeb.WechatPayController do
       |> send_resp(400, Jason.encode!(%{code: "FAIL", message: "签名验证失败"}))
     end
   end
-  
+
   def refund_notify(conn, _params) do
     {:ok, body, conn} = read_body(conn)
     headers = Enum.map(conn.req_headers, fn {k, v} -> {k, v} end)
-    
+
     # 处理退款通知
     case MyWechat.handle_refund_notification(headers, body) do
       {:ok, notification} ->
         # 处理退款结果（根据业务逻辑）
         process_refund_notification(notification)
-        
+
         # 返回成功响应
         conn
         |> put_resp_content_type("application/json")
         |> send_resp(200, Jason.encode!(%{code: "SUCCESS", message: "成功"}))
-        
+
       {:error, _error} ->
         # 处理失败
         conn
@@ -271,12 +271,12 @@ defmodule MyAppWeb.WechatPayController do
         |> send_resp(400, Jason.encode!(%{code: "FAIL", message: "处理通知失败"}))
     end
   end
-  
+
   defp process_payment_notification(notification) do
     # 实现支付通知处理逻辑
     # ...
   end
-  
+
   defp process_refund_notification(notification) do
     # 实现退款通知处理逻辑
     # ...
@@ -294,7 +294,7 @@ case MyWechat.create_native_transaction(params) do
     # 处理成功结果
     code_url = result["code_url"]
     # ...
-    
+
   {:error, %ExWechatpay.Exception{message: message, details: details}} ->
     # 处理错误
     Logger.error("微信支付下单失败: #{message}, 详情: #{inspect(details)}")
