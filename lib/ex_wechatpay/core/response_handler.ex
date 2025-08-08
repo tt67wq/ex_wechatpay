@@ -32,7 +32,7 @@ defmodule ExWechatpay.Core.ResponseHandler do
       case body do
         "" -> {:ok, %{}}
         nil -> {:ok, %{}}
-        _ -> Jason.decode(body)
+        _ -> {:ok, Jason.decode!(body)}
       end
     else
       {:error, Exception.new("wechatpay verify failed", %{"headers" => headers, "body" => body})}

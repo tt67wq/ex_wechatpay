@@ -255,61 +255,53 @@ defmodule ExWechatpay.Typespecs do
   @typedoc """
   JSAPI 支付响应参数
 
-  * `prepay_id` - 预支付交易会话标识
+  返回包含预支付交易会话标识的 map，键为字符串类型：
+  * "prepay_id" - 预支付交易会话标识
   """
   @type jsapi_transaction_resp :: %{
-          prepay_id: String.t()
+          String.t() => any()
         }
 
   @typedoc """
   Native 支付响应参数
 
-  * `code_url` - 二维码链接
+  返回包含二维码链接的 map，键为字符串类型：
+  * "code_url" - 二维码链接
   """
   @type native_transaction_resp :: %{
-          code_url: String.t()
+          String.t() => any()
         }
 
   @typedoc """
   H5 支付响应参数
 
-  * `h5_url` - H5 支付跳转链接
+  返回包含 H5 支付跳转链接的 map，键为字符串类型：
+  * "h5_url" - H5 支付跳转链接
   """
   @type h5_transaction_resp :: %{
-          h5_url: String.t()
+          String.t() => any()
         }
 
   @typedoc """
   交易查询响应参数
 
-  * `appid` - 应用 ID
-  * `mchid` - 商户号
-  * `out_trade_no` - 商户订单号
-  * `transaction_id` - 微信支付订单号
-  * `trade_type` - 交易类型
-  * `trade_state` - 交易状态
-  * `trade_state_desc` - 交易状态描述
-  * `bank_type` - 付款银行
-  * `success_time` - 支付完成时间
-  * `payer` - 支付者信息
-  * `amount` - 订单金额信息
-  * `scene_info` - 支付场景描述
-  * `promotion_detail` - 优惠信息
+  返回包含完整交易详情的 map，键为字符串类型，包含以下字段：
+  * "appid" - 应用 ID
+  * "mchid" - 商户号
+  * "out_trade_no" - 商户订单号
+  * "transaction_id" - 微信支付订单号
+  * "trade_type" - 交易类型
+  * "trade_state" - 交易状态
+  * "trade_state_desc" - 交易状态描述
+  * "bank_type" - 付款银行
+  * "success_time" - 支付完成时间
+  * "payer" - 支付者信息
+  * "amount" - 订单金额信息
+  * "scene_info" - 支付场景描述
+  * "promotion_detail" - 优惠信息
   """
   @type transaction_query_resp :: %{
-          appid: String.t(),
-          mchid: String.t(),
-          out_trade_no: String.t(),
-          transaction_id: String.t(),
-          trade_type: String.t(),
-          trade_state: String.t(),
-          trade_state_desc: String.t(),
-          bank_type: String.t() | nil,
-          success_time: String.t() | nil,
-          payer: payer(),
-          amount: amount(),
-          scene_info: scene_info() | nil,
-          promotion_detail: [map()] | nil
+          String.t() => any()
         }
 
   #
@@ -353,50 +345,41 @@ defmodule ExWechatpay.Typespecs do
   @typedoc """
   退款响应参数
 
-  * `refund_id` - 微信支付退款号
-  * `out_refund_no` - 商户退款单号
-  * `transaction_id` - 微信支付订单号
-  * `out_trade_no` - 商户订单号
-  * `channel` - 退款渠道
-  * `user_received_account` - 退款入账账户
-  * `success_time` - 退款成功时间
-  * `create_time` - 退款创建时间
-  * `status` - 退款状态
-  * `amount` - 金额信息
+  返回包含退款详情的 map，键为字符串类型，包含以下字段：
+  * "refund_id" - 微信支付退款号
+  * "out_refund_no" - 商户退款单号
+  * "transaction_id" - 微信支付订单号
+  * "out_trade_no" - 商户订单号
+  * "channel" - 退款渠道
+  * "user_received_account" - 退款入账账户
+  * "success_time" - 退款成功时间
+  * "create_time" - 退款创建时间
+  * "status" - 退款状态
+  * "amount" - 金额信息
   """
   @type refund_resp :: %{
-          refund_id: String.t(),
-          out_refund_no: String.t(),
-          transaction_id: String.t(),
-          out_trade_no: String.t(),
-          channel: String.t(),
-          user_received_account: String.t(),
-          success_time: String.t() | nil,
-          create_time: String.t(),
-          status: String.t(),
-          amount: refund_amount()
+          String.t() => any()
         }
 
   @typedoc """
   退款查询响应参数
 
-  * `refund_id` - 微信支付退款号
-  * `out_refund_no` - 商户退款单号
-  * `transaction_id` - 微信支付订单号
-  * `out_trade_no` - 商户订单号
-  * `channel` - 退款渠道
-  * `user_received_account` - 退款入账账户
-  * `success_time` - 退款成功时间
-  * `create_time` - 退款创建时间
-  * `status` - 退款状态
-  * `amount` - 金额信息
-  * `promotion_detail` - 优惠退款信息
+  返回包含退款查询详情的 map，键为字符串类型，包含以下字段：
+  * "refund_id" - 微信支付退款号
+  * "out_refund_no" - 商户退款单号
+  * "transaction_id" - 微信支付订单号
+  * "out_trade_no" - 商户订单号
+  * "channel" - 退款渠道
+  * "user_received_account" - 退款入账账户
+  * "success_time" - 退款成功时间
+  * "create_time" - 退款创建时间
+  * "status" - 退款状态
+  * "amount" - 金额信息
+  * "promotion_detail" - 优惠退款信息
   """
-  @type refund_query_resp ::
-          refund_resp()
-          | %{
-              promotion_detail: [map()] | nil
-            }
+  @type refund_query_resp :: %{
+          String.t() => any()
+        }
 
   #
   # HTTP 相关类型
