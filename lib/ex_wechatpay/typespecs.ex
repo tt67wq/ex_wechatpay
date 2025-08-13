@@ -186,66 +186,75 @@ defmodule ExWechatpay.Typespecs do
   @typedoc """
   JSAPI 支付请求参数
 
+  **必需字段：**
   * `description` - 商品描述
   * `out_trade_no` - 商户订单号
-  * `notify_url` - 通知地址（可选，默认使用配置中的通知地址）
   * `amount` - 订单金额信息
   * `payer` - 支付者信息
-  * `goods_tag` - 订单优惠标记（可选）
-  * `scene_info` - 支付场景描述（可选）
-  * `settle_info` - 结算信息（可选）
+
+  **可选字段：**
+  * `notify_url` - 通知地址，默认使用配置中的通知地址
+  * `goods_tag` - 订单优惠标记
+  * `scene_info` - 支付场景描述
+  * `settle_info` - 结算信息
   """
   @type jsapi_transaction_req :: %{
-          description: String.t(),
-          out_trade_no: String.t(),
-          notify_url: String.t() | nil,
-          amount: amount(),
-          payer: payer(),
-          goods_tag: goods_tag() | nil,
-          scene_info: scene_info() | nil,
-          settle_info: settle_info() | nil
+          required(:description) => String.t(),
+          required(:out_trade_no) => String.t(),
+          required(:amount) => amount(),
+          required(:payer) => payer(),
+          optional(:notify_url) => String.t(),
+          optional(:goods_tag) => goods_tag(),
+          optional(:scene_info) => scene_info(),
+          optional(:settle_info) => settle_info()
         }
 
   @typedoc """
   Native 支付请求参数（二维码支付）
 
+  **必需字段：**
   * `description` - 商品描述
   * `out_trade_no` - 商户订单号
-  * `notify_url` - 通知地址（可选，默认使用配置中的通知地址）
   * `amount` - 订单金额信息
-  * `goods_tag` - 订单优惠标记（可选）
-  * `scene_info` - 支付场景描述（可选）
-  * `settle_info` - 结算信息（可选）
+
+  **可选字段：**
+  * `notify_url` - 通知地址，默认使用配置中的通知地址
+  * `goods_tag` - 订单优惠标记
+  * `scene_info` - 支付场景描述
+  * `settle_info` - 结算信息
   """
   @type native_transaction_req :: %{
-          description: String.t(),
-          out_trade_no: String.t(),
-          notify_url: String.t() | nil,
-          amount: amount(),
-          goods_tag: goods_tag() | nil,
-          scene_info: scene_info() | nil,
-          settle_info: settle_info() | nil
+          required(:description) => String.t(),
+          required(:out_trade_no) => String.t(),
+          required(:amount) => amount(),
+          optional(:notify_url) => String.t(),
+          optional(:goods_tag) => goods_tag(),
+          optional(:scene_info) => scene_info(),
+          optional(:settle_info) => settle_info()
         }
 
   @typedoc """
   H5 支付请求参数
 
+  **必需字段：**
   * `description` - 商品描述
   * `out_trade_no` - 商户订单号
-  * `notify_url` - 通知地址（可选，默认使用配置中的通知地址）
   * `amount` - 订单金额信息
-  * `scene_info` - 支付场景描述（必填）
-  * `goods_tag` - 订单优惠标记（可选）
-  * `settle_info` - 结算信息（可选）
+  * `scene_info` - 支付场景描述
+
+  **可选字段：**
+  * `notify_url` - 通知地址，默认使用配置中的通知地址
+  * `goods_tag` - 订单优惠标记
+  * `settle_info` - 结算信息
   """
   @type h5_transaction_req :: %{
-          description: String.t(),
-          out_trade_no: String.t(),
-          notify_url: String.t() | nil,
-          amount: amount(),
-          scene_info: scene_info(),
-          goods_tag: goods_tag() | nil,
-          settle_info: settle_info() | nil
+          required(:description) => String.t(),
+          required(:out_trade_no) => String.t(),
+          required(:amount) => amount(),
+          required(:scene_info) => scene_info(),
+          optional(:notify_url) => String.t(),
+          optional(:goods_tag) => goods_tag(),
+          optional(:settle_info) => settle_info()
         }
 
   #
@@ -324,22 +333,25 @@ defmodule ExWechatpay.Typespecs do
   @typedoc """
   退款请求参数
 
+  **必需字段：**
   * `out_refund_no` - 商户退款单号
+  * `amount` - 退款金额信息
+
+  **可选字段：**
   * `out_trade_no` - 商户订单号（与 transaction_id 二选一）
   * `transaction_id` - 微信支付订单号（与 out_trade_no 二选一）
-  * `amount` - 退款金额信息
-  * `reason` - 退款原因（可选）
-  * `notify_url` - 退款结果通知地址（可选）
-  * `funds_account` - 退款资金来源（可选）
+  * `reason` - 退款原因
+  * `notify_url` - 退款结果通知地址
+  * `funds_account` - 退款资金来源
   """
   @type refund_req :: %{
-          out_refund_no: String.t(),
-          out_trade_no: String.t() | nil,
-          transaction_id: String.t() | nil,
-          amount: refund_amount(),
-          reason: String.t() | nil,
-          notify_url: String.t() | nil,
-          funds_account: String.t() | nil
+          required(:out_refund_no) => String.t(),
+          required(:amount) => refund_amount(),
+          optional(:out_trade_no) => String.t(),
+          optional(:transaction_id) => String.t(),
+          optional(:reason) => String.t(),
+          optional(:notify_url) => String.t(),
+          optional(:funds_account) => String.t()
         }
 
   @typedoc """

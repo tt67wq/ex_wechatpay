@@ -292,10 +292,11 @@ defmodule ExWechatpay do
 
       ## 示例
           iex> encrypted_data = %{
-          ...>   "algorithm" => "AEAD_AES_256_GCM",
-          ...>   "ciphertext" => "加密后的密文...",
-          ...>   "nonce" => "随机串",
-          ...>   "associated_data" => "关联数据"
+          ...>   algorithm: "AEAD_AES_256_GCM",
+          ...>   ciphertext: "加密后的密文...",
+          ...>   nonce: "随机串",
+          ...>   associated_data: "关联数据",
+          ...>   original_type: "transaction"
           ...> }
           iex> decrypt(encrypted_data)
           {:ok, "{\"transaction_id\":\"4200001285202103303271489573\"}"}
@@ -330,11 +331,11 @@ defmodule ExWechatpay do
 
       ## 示例
           iex> create_native_transaction(%{
-          ...>   "description" => "Image形象店-深圳腾大-QQ公仔",
-          ...>   "out_trade_no" => "1217752501201407033233368018",
-          ...>   "amount" => %{
-          ...>     "total" => 1,
-          ...>     "currency" => "CNY"
+          ...>   description: "Image形象店-深圳腾大-QQ公仔",
+          ...>   out_trade_no: "1217752501201407033233368018",
+          ...>   amount: %{
+          ...>     total: 1,
+          ...>     currency: "CNY"
           ...>   }
           ...> })
           {:ok, %{"code_url" => "weixin://wxpay/bizpayurl?pr=CvbR9Rmzz"}}
@@ -375,14 +376,14 @@ defmodule ExWechatpay do
 
       ## 示例
           iex> create_jsapi_transaction(%{
-          ...>   "description" => "Image形象店-深圳腾大-QQ公仔",
-          ...>   "out_trade_no" => "1217752501201407033233368018",
-          ...>   "amount" => %{
-          ...>     "total" => 1,
-          ...>     "currency" => "CNY"
+          ...>   description: "Image形象店-深圳腾大-QQ公仔",
+          ...>   out_trade_no: "1217752501201407033233368018",
+          ...>   amount: %{
+          ...>     total: 1,
+          ...>     currency: "CNY"
           ...>   },
-          ...>   "payer" => %{
-          ...>     "openid" => "oUpF8uMuAJO_M2pxb1Q9zNjWeS6o"
+          ...>   payer: %{
+          ...>     openid: "oUpF8uMuAJO_M2pxb1Q9zNjWeS6o"
           ...>   }
           ...> })
           {:ok, %{"prepay_id" => "wx03173911674781a20cf50feafc02ff0000"}}
@@ -424,15 +425,15 @@ defmodule ExWechatpay do
 
       ## 示例
           iex> create_h5_transaction(%{
-          ...>   "description" => "Image形象店-深圳腾大-QQ公仔",
-          ...>   "out_trade_no" => "1217752501201407033233368018",
-          ...>   "amount" => %{
-          ...>     "total" => 1,
-          ...>     "currency" => "CNY"
+          ...>   description: "Image形象店-深圳腾大-QQ公仔",
+          ...>   out_trade_no: "1217752501201407033233368018",
+          ...>   amount: %{
+          ...>     total: 1,
+          ...>     currency: "CNY"
           ...>   },
-          ...>   "scene_info" => %{
-          ...>     "payer_client_ip" => "127.0.0.1",
-          ...>     "device_id" => "device_id_123"
+          ...>   scene_info: %{
+          ...>     payer_client_ip: "127.0.0.1",
+          ...>     device_id: "device_id_123"
           ...>   }
           ...> })
           {:ok, %{"h5_url" => "https://wx.tenpay.com/cgi-bin/mmpayweb-bin/checkmweb?prepay_id=..."}}
@@ -613,12 +614,12 @@ defmodule ExWechatpay do
 
       ## 示例
           iex> create_refund(%{
-          ...>   "out_refund_no" => "refund_E6QEe56ERo",
-          ...>   "out_trade_no" => "test_QQuuheTjp7",
-          ...>   "amount" => %{
-          ...>     "refund" => 1,
-          ...>     "total" => 1,
-          ...>     "currency" => "CNY"
+          ...>   out_refund_no: "refund_E6QEe56ERo",
+          ...>   out_trade_no: "test_QQuuheTjp7",
+          ...>   amount: %{
+          ...>     refund: 1,
+          ...>     total: 1,
+          ...>     currency: "CNY"
           ...>   }
           ...> })
           {:ok,

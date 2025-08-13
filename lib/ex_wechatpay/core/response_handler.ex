@@ -22,7 +22,7 @@ defmodule ExWechatpay.Core.ResponseHandler do
     * `{:ok, map()}` - 验证通过的响应数据
     * `{:error, Exception.t()}` - 验证失败的错误信息
   """
-  @spec verify_and_parse_response(Typespecs.config_t(), Typespecs.http_response()) :: Typespecs.result_t(map())
+  @spec verify_and_parse_response(Typespecs.config_t(), Http.Response.t()) :: Typespecs.result_t(map())
   def verify_and_parse_response(config, resp) do
     %Http.Response{headers: headers, body: body} = resp
 

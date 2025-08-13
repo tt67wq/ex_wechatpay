@@ -26,3 +26,5 @@ ex_wechatpay-*.tar
 /tmp/
 
 .env
+
+/.claude/
