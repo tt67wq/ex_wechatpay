@@ -27,7 +27,7 @@ defmodule ExWechatpayTest do
     :ok
   end
 
-  # @tag exec: true
+  @tag :exec
   test "get_certificates" do
     assert {:ok, res} = App.get_certificates()
     ExWechatpay.Debug.debug(res)
@@ -79,7 +79,6 @@ defmodule ExWechatpayTest do
     ExWechatpay.Debug.debug(res)
   end
 
-  @tag exec: true
   test "close_transaction" do
     out_trade_no = Util.random_string(12)
 

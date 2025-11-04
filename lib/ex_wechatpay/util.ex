@@ -39,6 +39,23 @@ defmodule ExWechatpay.Util do
     end
   end
 
+  @doc """
+  decode pem, raise on error
+  ## Examples
+
+  iex> a = "-----BEGIN CERTIFICATE-----.....-----END CERTIFICATE-----"
+  iex> ExWechatpay.Util.load_pem!(a)
+  {:Certificate, ...}  # 成功时返回解析后的证书
+  ** (RuntimeError) failed to load PEM: reason
+  """
+  @spec load_pem!(binary) :: term()
+  def load_pem!(pem) do
+    case load_pem(pem) do
+      {:ok, result} -> result
+      {:error, reason} -> raise "failed to load PEM: #{inspect(reason)}"
+    end
+  end
+
   # 尝试使用标准方法解析 PEM 条目
   defp try_pem_entry_decode(entry) do
     case :public_key.pem_entry_decode(entry) do
@@ -66,5 +83,6 @@ defmodule ExWechatpay.Util do
 
   defp try_alternative_decode(_entry) do
     {:error, :unsupported_entry_type}
+
   end
 end

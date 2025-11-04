@@ -174,13 +174,13 @@ defmodule ExWechatpay.Config.Provider do
   defp parse_env_value(_, value), do: value
 
   # 如果是字符串，则加载 PEM
-  defp load_pem_if_string(value) when is_binary(value), do: Util.load_pem(value)
+  defp load_pem_if_string(value) when is_binary(value), do: Util.load_pem!(value)
   defp load_pem_if_string(value), do: value
 
   # 准备微信平台证书列表
   defp prepare_wx_pubs(wx_pubs) when is_list(wx_pubs) do
     Enum.map(wx_pubs, fn
-      {k, v} when is_binary(v) -> {k, Util.load_pem(v)}
+      {k, v} when is_binary(v) -> {k, Util.load_pem!(v)}
       pair -> pair
     end)
   end
