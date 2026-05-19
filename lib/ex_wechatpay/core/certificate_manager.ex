@@ -45,6 +45,9 @@ defmodule ExWechatpay.Core.CertificateManager do
         else
           {:error, Exception.new("verify_failed", %{"headers" => headers, "body" => body})}
         end
+      else
+        {:ok, %{"data" => data}} = Jason.decode(body)
+        {:ok, %{"data" => ResponseHandler.decrypt_certificates(data, config)}}
       end
     end
   end
@@ -65,7 +68,9 @@ defmodule ExWechatpay.Core.CertificateManager do
   """
   @spec update_certificates(ConfigOption.t(), Typespecs.name()) :: {:ok, ConfigOption.t()} | err_t()
   def update_certificates(config, finch) do
-    with {:ok, %{"data" => certificates}} <- get_certificates(config, finch) do
+    # verify=false: skip signature verification — stored wx_pub cert may be expired,
+    # and the response is signed with the new cert we're about to fetch.
+    with {:ok, %{"data" => certificates}} <- get_certificates(config, finch, false) do
       # 将证书更新到配置中
       updated_wx_pubs =
         Enum.map(certificates, fn %{"serial_no" => serial_no, "certificate" => cert} ->

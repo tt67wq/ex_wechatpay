@@ -9,6 +9,7 @@ defmodule ExWechatpay.Config.Manager do
   use GenServer
 
   alias ExWechatpay.Config.Provider
+  alias ExWechatpay.Util
 
   # 1 day
   @default_interval 60_000 * 60 * 24
@@ -207,20 +208,20 @@ defmodule ExWechatpay.Config.Manager do
   end
 
   defp do_update_certificates(name, client_name) do
-    # 获取当前配置
     _current_config = Provider.get_current_config(name)
 
-    # 调用 API 获取新的证书
-    case apply(client_name, :get_certificates, []) do
+    # verify=false: stored wx_pub cert may be expired, response signed with new cert
+    case apply(client_name, :get_certificates, [false]) do
       {:ok, %{"data" => certificates}} ->
-        # 转换证书格式
         wx_pubs =
           Enum.map(certificates, fn %{"serial_no" => serial_no, "certificate" => cert} ->
-            {serial_no, cert}
+            {serial_no, Util.load_pem!(cert)}
           end)
 
-        # 更新配置
-        Provider.update_config(name, wx_pubs: wx_pubs)
+        # Direct update Core Agent — Provider.update_config validates schema
+        # which lacks :finch (added by Core after Provider.load)
+        Agent.update(name, fn cfg -> Keyword.put(cfg, :wx_pubs, wx_pubs) end)
+        {:ok, Provider.get_current_config(name)}
 
       error ->
         error

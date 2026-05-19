@@ -102,7 +102,12 @@ defmodule ExWechatpay.Core.SignatureManager do
          string_to_sign = "#{ts}\n#{nonce}\n#{body}\n",
          encoded_wx_signature = headers["wechatpay-signature"],
          {:ok, wx_signature} <- Base.decode64(encoded_wx_signature) do
-      :public_key.verify(string_to_sign, :sha256, wx_signature, wx_pub)
+      # OTP 28: :public_key.verify/4 doesn't accept #'Certificate'{} or #'SubjectPublicKeyInfo'{} as Key
+      # Extract #'RSAPublicKey'{} from the SubjectPublicKeyInfo payload
+      {:Certificate, tbs_cert, _, _} = wx_pub
+      {:SubjectPublicKeyInfo, _, rsa_der} = elem(tbs_cert, 7)
+      rsa_key = :public_key.der_decode(:RSAPublicKey, rsa_der)
+      :public_key.verify(string_to_sign, :sha256, wx_signature, rsa_key)
     end
-  end
+end
 end

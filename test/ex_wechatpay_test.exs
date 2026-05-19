@@ -13,7 +13,7 @@ defmodule ExWechatpayTest do
       notify_url: "https://test.domain/api/notify/wechat_pay",
       apiv3_key: "A212399AjklasMDKNmA1232D91281230",
       wx_pubs: [
-        {"35CE31ED8F4A50B930FF8D37C51B5ADA03265E72", File.read!(Path.join(test_cert_path, "wx_pub.pem"))}
+        {"7A4AB1204AA3338A45AEB59263926FBA9E8C40C7", File.read!(Path.join(test_cert_path, "wx_pub.pem"))}
       ],
       client_serial_no: "1C995B73884734F30327FD63C46DA5386C086104",
       client_key: File.read!(Path.join(test_cert_path, "apiclient_key.pem")),
@@ -29,8 +29,12 @@ defmodule ExWechatpayTest do
 
   @tag :exec
   test "get_certificates" do
-    assert {:ok, res} = App.get_certificates()
-    ExWechatpay.Debug.debug(res)
+    # Fetch new platform certs and update in-memory config.
+    # Useful when stored wx_pub cert is expired — update_certificates skips
+    # response signature verification since it uses the old cert to verify
+    # the new one, which would fail.
+    assert {:ok, config} = App.update_certificates()
+    IO.inspect(config[:wx_pubs], label: "Updated wx_pubs")
   end
 
   test "create_native_transaction" do
@@ -84,7 +88,6 @@ defmodule ExWechatpayTest do
 
     App.create_native_transaction(%{
       :description => "Image形象店-深圳腾大-QQ公仔",
-      :out_trade_no => out_trade_no,
       :out_trade_no => out_trade_no,
       :notify_url => "https://www.weixin.qq.com/wxpay/pay.php",
       :amount => %{
