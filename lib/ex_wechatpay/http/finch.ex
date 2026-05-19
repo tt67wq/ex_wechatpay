@@ -47,7 +47,7 @@ defimpl ExWechatpay.Http, for: ExWechatpay.Http.Finch do
   @spec do_request(ExWechatpay.Http.Finch.t(), Http.Request.t()) ::
           {:ok, Http.Response.t()} | {:error, ExWechatpay.Exception.t()}
   def do_request(%ExWechatpay.Http.Finch{finch_name: finch_name}, req) do
-    opts = opts(req.opts)
+    request_opts = opts(req.opts)
 
     finch_req =
       Finch.build(
@@ -55,11 +55,11 @@ defimpl ExWechatpay.Http, for: ExWechatpay.Http.Finch do
         Http.Request.url(req),
         req.headers,
         req.body,
-        opts
+        []
       )
 
     finch_req
-    |> Finch.request(finch_name)
+    |> Finch.request(finch_name, request_opts)
     |> case do
       {:ok, %Finch.Response{status: status, body: body, headers: headers}}
       when status in 200..299 ->
