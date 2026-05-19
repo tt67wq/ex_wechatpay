@@ -48,13 +48,10 @@ defmodule ExWechatpay.Model.Http do
           URI.encode_query(params)
         end
 
-      %URI{
-        scheme: scheme,
-        host: host,
-        path: path,
-        query: query,
-        port: port
-      }
+      base = "#{scheme}://#{host}"
+      base = if port != 443, do: "#{base}:#{port}", else: base
+      url = if query, do: "#{base}#{path}?#{query}", else: "#{base}#{path}"
+      URI.parse(url)
     end
   end
 
