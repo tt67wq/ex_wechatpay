@@ -83,6 +83,5 @@ defmodule ExWechatpay.Util do
 
   defp try_alternative_decode(_entry) do
     {:error, :unsupported_entry_type}
-
   end
 end

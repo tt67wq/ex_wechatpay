@@ -109,5 +109,5 @@ defmodule ExWechatpay.Core.SignatureManager do
       rsa_key = :public_key.der_decode(:RSAPublicKey, rsa_der)
       :public_key.verify(string_to_sign, :sha256, wx_signature, rsa_key)
     end
-end
+  end
 end
