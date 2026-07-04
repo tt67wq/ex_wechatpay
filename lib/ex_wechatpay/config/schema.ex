@@ -90,6 +90,37 @@ defmodule ExWechatpay.Config.Schema do
       type: {:in, [:debug, :info, :warn, :error, :none]},
       default: :info,
       doc: "日志级别"
+    ],
+    virtual_pay: [
+      type: :keyword_list,
+      required: false,
+      keys: [
+        offer_id: [
+          type: :string,
+          required: true,
+          doc: "虚拟支付应用 ID（微信后台分配）"
+        ],
+        app_key: [
+          type: :string,
+          required: true,
+          doc: "虚拟支付现网 AppKey"
+        ],
+        app_key_sandbox: [
+          type: :string,
+          required: false,
+          default: "",
+          doc: "虚拟支付沙箱 AppKey"
+        ],
+        env: [
+          type: {:in, [0, 1]},
+          default: 1,
+          doc: "虚拟支付环境：0=正式，1=沙箱"
+        ]
+      ],
+      doc: """
+      虚拟支付配置（可选）。
+      启用虚拟支付功能时需要配置此子键。
+      """
     ]
   ]
 

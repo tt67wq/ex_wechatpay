@@ -764,6 +764,107 @@ defmodule ExWechatpay do
       @spec handle_refund_notification(Typespecs.headers(), Typespecs.body()) ::
               Typespecs.result_t(Typespecs.payment_notification())
       def handle_refund_notification(headers, body), do: delegate(:handle_refund_notification, [headers, body])
+
+      # ===== 虚拟支付 API =====
+
+      defp vp_config do
+        config = ExWechatpay.Config.Helper.get_config(__MODULE__)
+        token_agent = Module.concat(__MODULE__, VirtualPayTokenAgent)
+        Keyword.put(config, :virtual_pay_token_agent, token_agent)
+      end
+
+      @doc """
+      生成虚拟支付签名
+
+      组装 signData 并计算所有签名，返回前端 `wx.requestVirtualPayment` 所需的全部数据。
+
+      ## 参数
+         * `args` - 参数
+           * `:product_id` - 道具 ID，如 `"vip_six_week"`
+           * `:out_trade_no` - 商户订单号
+           * `:code` - `wx.login()` 获取的 code
+           * `:goods_price` - 价格（分）
+
+      ## 返回值
+         * `{:ok, map()}` - 包含 `sign_data`, `sign_data_str`, `pay_sig`, `signature`, `session_key`
+         * `{:error, Exception.t()}` - 失败
+      """
+      @spec virtual_pay_sign(keyword()) :: Typespecs.result_t(map())
+      def virtual_pay_sign(args), do: ExWechatpay.VirtualPay.sign(vp_config(), args)
+
+      @doc """
+      查询虚拟支付代币余额
+
+      ## 参数
+         * `openid` - 用户 openid
+         * `user_ip` - 用户 IP
+
+      ## 返回值
+         * `{:ok, map()}` - 余额信息
+         * `{:error, Exception.t()}` - 失败
+      """
+      @spec virtual_pay_query_balance(String.t(), String.t()) :: Typespecs.result_t(map())
+      def virtual_pay_query_balance(openid, user_ip),
+        do: ExWechatpay.VirtualPay.query_balance(vp_config(), openid, user_ip)
+
+      @doc """
+      查询虚拟支付订单状态
+
+      ## 参数
+         * `openid` - 用户 openid
+         * `out_trade_no` - 商户订单号
+
+      ## 返回值
+         * `{:ok, map()}` - 订单信息
+         * `{:error, Exception.t()}` - 失败
+      """
+      @spec virtual_pay_query_order(String.t(), String.t()) :: Typespecs.result_t(map())
+      def virtual_pay_query_order(openid, out_trade_no),
+        do: ExWechatpay.VirtualPay.query_order(vp_config(), openid, out_trade_no)
+
+      @doc """
+      发起虚拟支付退款
+
+      ## 参数
+         * `openid` - 用户 openid
+         * `out_trade_no` - 商户订单号
+         * `refund_fee` - 退款金额（分）
+
+      ## 返回值
+         * `{:ok, map()}` - 退款信息
+         * `{:error, Exception.t()}` - 失败
+      """
+      @spec virtual_pay_refund(String.t(), String.t(), integer()) :: Typespecs.result_t(map())
+      def virtual_pay_refund(openid, out_trade_no, refund_fee),
+        do: ExWechatpay.VirtualPay.refund(vp_config(), openid, out_trade_no, refund_fee)
+
+      @doc """
+      通知微信虚拟支付已发货
+
+      ## 参数
+         * `openid` - 用户 openid
+         * `out_trade_no` - 商户订单号
+
+      ## 返回值
+         * `{:ok, map()}` - 通知结果
+         * `{:error, Exception.t()}` - 失败
+      """
+      @spec virtual_pay_notify_deliver(String.t(), String.t()) :: Typespecs.result_t(map())
+      def virtual_pay_notify_deliver(openid, out_trade_no),
+        do: ExWechatpay.VirtualPay.notify_deliver(vp_config(), openid, out_trade_no)
+
+      @doc """
+      用 code 换 session_key + openid（虚拟支付登录态）
+
+      ## 参数
+         * `code` - `wx.login()` 获取的 code
+
+      ## 返回值
+         * `{:ok, %{session_key: ..., openid: ...}}`
+         * `{:error, Exception.t()}` - 失败
+      """
+      @spec virtual_pay_code2session(String.t()) :: Typespecs.result_t(map())
+      def virtual_pay_code2session(code), do: ExWechatpay.VirtualPay.code2session(vp_config(), code)
     end
   end
 end
